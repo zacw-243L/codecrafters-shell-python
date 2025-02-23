@@ -8,19 +8,25 @@ def split_input(inp):
     inpList = []
     toFile = ""
     errFile = ""
+    appendFile = ""
     curWord = ""
     while i < len(inp):
         if inp[i] == "\\":
             curWord += inp[i + 1]
             i += 1
         elif inp[i] == " ":
-            if ">" in curWord:
+            if ">>" in curWord:
                 parts = inp[i + 1:].split()
-                if curWord == "2>":
-                    errFile = parts[0]
-                else:
-                    toFile = parts[0]
-                return inpList, toFile, errFile
+                appendFile = parts[0]
+                return inpList, toFile, errFile, appendFile
+            elif "2>" in curWord:
+                parts = inp[i + 1:].split()
+                errFile = parts[0]
+                return inpList, toFile, errFile, appendFile
+            elif ">" in curWord:
+                parts = inp[i + 1:].split()
+                toFile = parts[0]
+                return inpList, toFile, errFile, appendFile
             if curWord:
                 inpList.append(curWord)
             curWord = ""
@@ -42,7 +48,7 @@ def split_input(inp):
             curWord += inp[i]
         i += 1
     inpList.append(curWord)
-    return inpList, toFile, errFile
+    return inpList, toFile, errFile, appendFile
 
 
 def main():
@@ -52,7 +58,7 @@ def main():
     while not exited:
         sys.stdout.write("$ ")
         userinp = input()
-        inpList, toFile, errFile = split_input(userinp)
+        inpList, toFile, errFile, appendFile = split_input(userinp)
         output = ""
         error = ""
         match inpList[0]:
@@ -97,12 +103,15 @@ def main():
                         break
                 if not isCmd:
                     error = userinp + ": command not found"
-        if not toFile:
+        if appendFile:
+            with open(appendFile, "a") as f:
+                print(output, end="", file=f)
+        elif toFile:
+            with open(toFile, "w") as f:
+                print(output, end="", file=f)
+        else:
             if output:
                 print(output, file=sys.stdout)
-        else:
-            with open(toFile, "a") as f:
-                print(output, end="", file=f)
         if errFile:
             with open(errFile, "a") as f:
                 print(error, end="", file=f)
