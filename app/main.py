@@ -7,6 +7,7 @@ def split_input(inp):
     i = 0
     inpList = []
     toFile = ""
+    errFile = ""
     curWord = ""
     while i < len(inp):
         if inp[i] == "\\":
@@ -14,8 +15,12 @@ def split_input(inp):
             i += 1
         elif inp[i] == " ":
             if ">" in curWord:
-                toFile = inp[i + 1:]
-                return inpList, toFile
+                parts = inp[i + 1:].split()
+                if curWord == "2>":
+                    errFile = parts[0]
+                else:
+                    toFile = parts[0]
+                return inpList, toFile, errFile
             if curWord:
                 inpList.append(curWord)
             curWord = ""
@@ -37,7 +42,7 @@ def split_input(inp):
             curWord += inp[i]
         i += 1
     inpList.append(curWord)
-    return inpList, toFile
+    return inpList, toFile, errFile
 
 
 def main():
@@ -47,8 +52,9 @@ def main():
     while not exited:
         sys.stdout.write("$ ")
         userinp = input()
-        inpList, toFile = split_input(userinp)
+        inpList, toFile, errFile = split_input(userinp)
         output = ""
+        error = ""
         match inpList[0]:
             case "cd":
                 path = inpList[1]
@@ -57,7 +63,7 @@ def main():
                 elif os.path.isdir(path):
                     os.chdir(path)
                 else:
-                    output = path + ": No such file or directory"
+                    error = path + ": No such file or directory"
             case "pwd":
                 output = os.getcwd()
             case "type":
@@ -68,7 +74,7 @@ def main():
                 if inpList[1] in builtin_list:
                     output = inpList[1] + " is a shell builtin"
                 if not output:
-                    output = inpList[1] + ": not found"
+                    error = inpList[1] + ": not found"
             case "echo":
                 output = " ".join(inpList[1:])
             case "exit":
@@ -78,19 +84,30 @@ def main():
                 for path in path_list:
                     p = f"{path}/{inpList[0]}"
                     if os.path.isfile(p) and os.access(p, os.X_OK):
-                        output = subprocess.run(
-                            [inpList[0]] + inpList[1:], stdout=subprocess.PIPE, text=True, cwd=path
-                        ).stdout.rstrip()
+                        result = subprocess.run(
+                            [inpList[0]] + inpList[1:],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            text=True,
+                            cwd=path
+                        )
+                        output = result.stdout.rstrip()
+                        error = result.stderr.rstrip()
                         isCmd = True
                         break
                 if not isCmd:
-                    output = userinp + ": command not found"
+                    error = userinp + ": command not found"
         if not toFile:
             if output:
                 print(output, file=sys.stdout)
         else:
             with open(toFile, "a") as f:
                 print(output, end="", file=f)
+        if errFile:
+            with open(errFile, "a") as f:
+                print(error, end="", file=f)
+        elif error:
+            print(error, file=sys.stderr)
 
 
 if __name__ == "__main__":
