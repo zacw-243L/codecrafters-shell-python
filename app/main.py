@@ -135,9 +135,7 @@ def main():
         if errFile:
             with open(errFile, "a") as f:
                 if error:
-                    print(error, file=f)
-                else:
-                    f.write("")  # Ensure the file is created
+                    f.write(error + "\n")
         elif error:
             print(error, file=sys.stderr)
 
