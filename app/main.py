@@ -133,10 +133,11 @@ def main():
             if output:
                 print(output, file=sys.stdout)
         if errFile:
-            os.makedirs(os.path.dirname(errFile), exist_ok=True)  # Ensure the directory exists
             with open(errFile, "a") as f:
                 if error:
                     f.write(error + "\n")
+                else:
+                    f.write("")  # Ensure the file is created
         elif error:
             print(error, file=sys.stderr)
 
