@@ -1,8 +1,9 @@
 import sys
 import shutil
 import subprocess
+import os  # Importing os module for pwd functionality
 
-BUILTIN_CMD = {"exit", "echo", "type"}
+BUILTIN_CMD = {"exit", "echo", "type", "pwd"}  # Added pwd to the built-in commands
 
 
 def type_cmd(command):
@@ -36,6 +37,8 @@ def main():
                 print(*args)
             case ["type", cmd]:
                 type_cmd(cmd)
+            case ["pwd"]:  # Handle pwd command
+                print(os.getcwd())  # Print the current working directory
             case _:
                 # Split the command into a list for external execution
                 external_command = command.split()
@@ -44,4 +47,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
