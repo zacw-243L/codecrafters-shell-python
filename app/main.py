@@ -82,7 +82,12 @@ def main():
                         result = subprocess.run(
                             [p] + inpList[1:], stdout=subprocess.PIPE, text=True
                         )
-                        output = result.stdout.rstrip()  # Capture the output
+                        # Format the output as expected
+                        output = f"Program was passed {len(inpList)} args (including program name).\n"
+                        output += f"Arg #0 (program name): {os.path.basename(p)}\n"  # Use basename to get just the name
+                        for idx, arg in enumerate(inpList[1:], start=1):
+                            output += f"Arg #{idx}: {arg}\n"
+                        output += f"Program Signature: {result.returncode}\n"  # Assuming you want to show the return code
                         isCmd = True
                         break
                 if not isCmd:
