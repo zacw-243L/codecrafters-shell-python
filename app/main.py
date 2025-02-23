@@ -20,6 +20,10 @@ def split_input(inp):
                 parts = inp[i + 1:].split()
                 appendFile = parts[0]
                 return inpList, toFile, errFile, appendFile
+            elif "2>>" in curWord:
+                parts = inp[i + 1:].split()
+                errFile = parts[0]
+                return inpList, toFile, errFile, appendFile
             elif "2>" in curWord:
                 parts = inp[i + 1:].split()
                 errFile = parts[0]
