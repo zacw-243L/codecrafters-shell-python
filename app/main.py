@@ -1,44 +1,43 @@
 import sys
-import os
+import shutil
+import subprocess
+
+BUILTIN_CMD = {"exit", "echo", "type", "cd", "pwd"}
 
 
-def find_in_path(param):
-    path = os.environ['PATH']
-    print("Path: " + path)
-    print(f"Param: {param}")
-    for directory in path.split(":"):
-        for (dirpath, dirnames, filenames) in os.walk(directory):
-            if param in filenames:
-                return f"{dirpath}/{param}"
-    return None
+def type_cmd(command):
+    if command in BUILTIN_CMD:
+        print(f"{command} is a shell builtin")
+    elif path := shutil.which(command):
+        print(f"{command} is {path}")
+    else:
+        print(f"{command}: not found")
+
+
+def run_external_command(command):
+    try:
+        # Execute the command and capture the output
+        result = subprocess.run(command, check=True, text=True, capture_output=True)
+        print(result.stdout, end='')  # Print the output from the command
+    except subprocess.CalledProcessError as e:
+        print(f"{e.cmd}: command failed with exit code {e.returncode}")
 
 
 def main():
     while True:
         sys.stdout.write("$ ")
-        sys.stdout.flush()
-        # Wait for user input
         command = input()
-        match command.split(" "):
+        match command.split():
             case ["exit", "0"]:
-                exit(0)
-            case ["echo", *cmd]:
-                print(" ".join(cmd))
-            case ["type", *cmd]:
-                match cmd:
-                    case ["echo" | "exit" | "type"]:
-                        print(f"${cmd[0]} is a shell builtin")
-                    case _:
-                        location = find_in_path(cmd[0])
-                        if location:
-                            print(f"${cmd[0]} is {location}")
-                        else:
-                            print(f"${" ".join(cmd)} not found")
+                exit()
+            case ["echo", *args]:
+                print(*args)
+            case ["type", cmd]:
+                type_cmd(cmd)
             case _:
-                if os.path.isfile(command.split(" ")[0]):
-                    os.system(command)
-                else:
-                    print(f"{command}: command not found")
+                # Split the command into a list for external execution
+                external_command = command.split()
+                run_external_command(external_command)
 
 
 if __name__ == "__main__":
