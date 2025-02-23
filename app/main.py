@@ -105,16 +105,16 @@ def main():
                     error = userinp + ": command not found"
         if appendFile:
             with open(appendFile, "a") as f:
-                print(output, end="", file=f)
+                print(output, end="\n", file=f)
         elif toFile:
             with open(toFile, "w") as f:
-                print(output, end="", file=f)
+                print(output, end="\n", file=f)
         else:
             if output:
                 print(output, file=sys.stdout)
         if errFile:
             with open(errFile, "a") as f:
-                print(error, end="", file=f)
+                print(error, end="\n", file=f)
         elif error:
             print(error, file=sys.stderr)
 
