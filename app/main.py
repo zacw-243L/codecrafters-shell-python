@@ -103,18 +103,18 @@ def main():
                         break
                 if not isCmd:
                     error = userinp + ": command not found"
-        if appendFile:
+        if appendFile and output:
             with open(appendFile, "a") as f:
-                print(output, end="\n", file=f)
-        elif toFile:
+                print(output, file=f)
+        elif toFile and output:
             with open(toFile, "w") as f:
-                print(output, end="\n", file=f)
+                print(output, file=f)
         else:
             if output:
                 print(output, file=sys.stdout)
-        if errFile:
+        if errFile and error:
             with open(errFile, "a") as f:
-                print(error, end="\n", file=f)
+                print(error, file=f)
         elif error:
             print(error, file=sys.stderr)
 
