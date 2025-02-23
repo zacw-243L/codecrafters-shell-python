@@ -16,7 +16,7 @@ def split_input(inp):
             curWord += inp[i + 1]
             i += 1
         elif inp[i] == " ":
-            if ">>" in curWord:
+            if " >>" in curWord:
                 parts = inp[i + 1:].split()
                 appendFile = parts[0]
                 return inpList, toFile, errFile, appendFile
@@ -55,7 +55,7 @@ def split_input(inp):
 def completer(text, state):
     path_list = os.environ["PATH"].split(":")
     builtin_list = ["exit", "echo", "type", "pwd", "cd"]
-    matches = [cmd for cmd in builtin_list if cmd.startswith(text)]
+    matches = [cmd + " " for cmd in builtin_list if cmd.startswith(text)]
     for path in path_list:
         if os.path.isdir(path):
             for file in os.listdir(path):
@@ -72,6 +72,7 @@ def main():
     readline.parse_and_bind("tab: complete")
     while not exited:
         sys.stdout.write("$ ")
+        sys.stdout.flush()
         userinp = input()
         inpList, toFile, errFile, appendFile = split_input(userinp)
         output = ""
