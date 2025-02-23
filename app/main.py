@@ -11,7 +11,7 @@ def type_cmd(command):
     elif path := shutil.which(command):
         print(f"{command} is {path}")
     else:
-        print(f"{command}: command not found")
+        print(f"{command}: not found")  # Updated error message
 
 
 def run_external_command(command):
@@ -20,7 +20,7 @@ def run_external_command(command):
         result = subprocess.run(command, check=True, text=True, capture_output=True)
         print(result.stdout, end='')  # Print the output from the command
     except FileNotFoundError:
-        print(f"{command[0]}: command not found")
+        print(f"{command[0]}: not found")  # Updated error message
     except subprocess.CalledProcessError as e:
         print(f"{e.cmd}: command failed with exit code {e.returncode}")
 
