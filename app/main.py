@@ -45,9 +45,7 @@ def main():
     path_list = os.environ["PATH"].split(":")
     builtin_list = ["exit", "echo", "type", "pwd", "cd"]
     while not exited:
-        # Uncomment this block to pass the first stage
         sys.stdout.write("$ ")
-        # Wait for user input
         userinp = input()
         inpList, toFile = split_input(userinp)
         output = ""
@@ -79,9 +77,9 @@ def main():
                 isCmd = False
                 for path in path_list:
                     p = f"{path}/{inpList[0]}"
-                    if os.path.isfile(p):
+                    if os.path.isfile(p) and os.access(p, os.X_OK):
                         output = subprocess.run(
-                            [p] + inpList[1:], stdout=subprocess.PIPE, text=True
+                            [inpList[0]] + inpList[1:], stdout=subprocess.PIPE, text=True, cwd=path
                         ).stdout.rstrip()
                         isCmd = True
                         break
