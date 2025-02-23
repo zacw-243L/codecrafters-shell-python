@@ -1,48 +1,57 @@
 import sys
-import os
+import shutil
+import subprocess
+import os  # Importing os module for pwd functionality
+
+BUILTIN_CMD = {"exit", "echo", "type", "pwd", "cd"}  # Added cd to the built-in commands
+
+
+def type_cmd(command):
+    if command in BUILTIN_CMD:
+        print(f"{command} is a shell builtin")
+    elif path := shutil.which(command):
+        print(f"{command} is {path}")
+    else:
+        print(f"{command}: not found")  # Updated error message
+
+
+def run_external_command(command):
+    try:
+        # Execute the command and capture the output
+        result = subprocess.run(command, check=True, text=True, capture_output=True)
+        print(result.stdout, end='')  # Print the output from the command
+    except FileNotFoundError:
+        print(f"{command[0]}: not found")  # Updated error message
+    except subprocess.CalledProcessError as e:
+        print(f"{e.cmd}: command failed with exit code {e.returncode}")
+
+
+def change_directory(path):
+    try:
+        os.chdir(path)  # Change the current working directory
+    except FileNotFoundError:
+        print(f"cd: {path}: No such file or directory")  # Error message for invalid path
 
 
 def main():
-    commands = {"exit", "echo", "type"}
     while True:
         sys.stdout.write("$ ")
-        sys.stdout.flush()
-        # Wait for user input
-        command = input().split()
-
-        match command[0]:
-            case "exit":
-                if command[1] == "0":
-                    sys.exit(0)
-            case "echo":
-                print(" ".join(command[1:]))
-            case "type":
-                if command[1] in commands:
-                    print(f"{command[1]} is a shell builtin")
-                else:
-                    paths = os.getenv("PATH").split(":")
-                    # print(paths)
-                    for path in paths:
-                        path_to_command = f"{path}/{command[1]}"
-                        # print(path_to_command)
-                        if os.path.exists(path_to_command):
-                            print(f"{command[1]} is {path_to_command}")
-                            break
-                    else:
-                        print(f"{command[1]}: not found")
-            case "pwd":
-                print(f"{os.getcwd()}")
-            case "cd":
-                try:
-                    os.chdir(" ".join(command[1:]))
-                except FileNotFoundError:
-                    print(" ".join(command) + ": No such file or directory")
+        command = input()
+        match command.split():
+            case ["exit", "0"]:
+                exit(0)  # Exit with status code 0
+            case ["echo", *args]:
+                print(*args)
+            case ["type", cmd]:
+                type_cmd(cmd)
+            case ["pwd"]:  # Handle pwd command
+                print(os.getcwd())  # Print the current working directory
+            case ["cd", path]:  # Handle cd command
+                change_directory(path)  # Change the directory
             case _:
-                if os.path.exists(command[0]):
-                    os.system(" ".join(command))
-                else:
-                    # print("i'm here")
-                    print(f"${command[0]}: command not found")
+                # Split the command into a list for external execution
+                external_command = command.split()
+                run_external_command(external_command)
 
 
 if __name__ == "__main__":
