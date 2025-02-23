@@ -27,6 +27,9 @@ def run_external_command(command):
 
 
 def change_directory(path):
+    # Check if the path is ~ and change to the home directory
+    if path == "~":
+        path = os.path.expanduser("~")  # Get the home directory
     try:
         os.chdir(path)  # Change the current working directory
     except FileNotFoundError:
@@ -56,3 +59,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
