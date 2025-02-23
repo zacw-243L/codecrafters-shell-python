@@ -137,7 +137,7 @@ def main():
                 if error:
                     f.write(error + "\n")
                 else:
-                    f.write("")  # Ensure the file is created
+                    f.write("")
         elif error:
             print(error, file=sys.stderr)
 
