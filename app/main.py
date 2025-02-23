@@ -112,9 +112,12 @@ def main():
         else:
             if output:
                 print(output, file=sys.stdout)
-        if errFile and error:
+        if errFile:
             with open(errFile, "a") as f:
-                print(error, file=f)
+                if error:
+                    print(error, file=f)
+                else:
+                    f.write("")  # Ensure the file is created
         elif error:
             print(error, file=sys.stderr)
 
