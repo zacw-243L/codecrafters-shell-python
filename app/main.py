@@ -18,11 +18,11 @@ SHELL_BUILTINS: Final[list[str]] = [
 
 def parse_programs_in_path(path: str, programs: dict[str, pathlib.Path]) -> None:
     """Creates a mapping of programs in path to their paths"""
-    for p in pathlib.Path(path).iterdir():
-        if p.is_dir():
-            for b in p.iterdir():
-                if b.is_file() and os.access(b, os.X_OK):
-                    programs[b.name] = b
+    p = pathlib.Path(path)
+    if p.exists() and p.is_dir():  # Check if the path exists and is a directory
+        for b in p.iterdir():
+            if b.is_file() and os.access(b, os.X_OK):
+                programs[b.name] = b
 
 
 def generate_program_paths() -> Mapping[str, pathlib.Path]:
