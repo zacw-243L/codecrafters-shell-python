@@ -2,7 +2,7 @@ import sys
 import shutil
 import subprocess
 
-BUILTIN_CMD = {"exit", "echo", "type", "cd", "pwd"}
+BUILTIN_CMD = {"exit", "echo", "type"}
 
 
 def type_cmd(command):
@@ -11,7 +11,7 @@ def type_cmd(command):
     elif path := shutil.which(command):
         print(f"{command} is {path}")
     else:
-        print(f"{command}: not found")
+        print(f"{command}: command not found")
 
 
 def run_external_command(command):
@@ -19,6 +19,8 @@ def run_external_command(command):
         # Execute the command and capture the output
         result = subprocess.run(command, check=True, text=True, capture_output=True)
         print(result.stdout, end='')  # Print the output from the command
+    except FileNotFoundError:
+        print(f"{command[0]}: command not found")
     except subprocess.CalledProcessError as e:
         print(f"{e.cmd}: command failed with exit code {e.returncode}")
 
@@ -29,7 +31,7 @@ def main():
         command = input()
         match command.split():
             case ["exit", "0"]:
-                exit()
+                exit(0)  # Exit with status code 0
             case ["echo", *args]:
                 print(*args)
             case ["type", cmd]:
@@ -42,3 +44,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
