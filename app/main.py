@@ -35,10 +35,23 @@ def main():
             except Exception:
                 print(f"cd: {paths}: No such file or directory")
         elif command.startswith("echo"):
-            if command.startswith("'") and command.endswith("'"):
-                message = command[6:-1]
-                print(message)
+            # Check for output redirection
+            if '>' in command:
+                parts = command.split('>')
+                command_to_run = parts[0].strip()  # The command before the >
+                output_file = parts[1].strip() if len(parts) > 1 else None  # The file to redirect to
+
+                # Prepare the message to echo
+                if command_to_run.startswith("echo"):
+                    message = command_to_run[5:].strip()  # Get the message after 'echo '
+                    if message.startswith("'") and message.endswith("'"):
+                        message = message[1:-1]  # Remove quotes
+                    # Write the message to the output file
+                    if output_file:
+                        with open(output_file, 'w') as f:
+                            f.write(message)
             else:
+                # Handle normal echo without redirection
                 parts = shlex.split(command[5:])
                 print(" ".join(parts))
         elif command.startswith("type"):
