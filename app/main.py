@@ -44,8 +44,11 @@ def main():
                 # Prepare the message to echo
                 if command_to_run.startswith("echo"):
                     message = command_to_run[5:].strip()  # Get the message after 'echo '
+                    # Remove surrounding quotes if present
                     if message.startswith("'") and message.endswith("'"):
-                        message = message[1:-1]  # Remove quotes
+                        message = message[1:-1]  # Remove single quotes
+                    elif message.startswith('"') and message.endswith('"'):
+                        message = message[1:-1]  # Remove double quotes
                     # Write the message to the output file
                     if output_file:
                         with open(output_file, 'w') as f:
