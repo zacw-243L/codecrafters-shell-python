@@ -1,62 +1,67 @@
+import os
 import sys
-import shutil
+import shlex
 import subprocess
-import os  # Importing os module for pwd functionality
-
-BUILTIN_CMD = {"exit", "echo", "type", "pwd", "cd"}  # Added cd to the built-in commands
 
 
-def type_cmd(command):
-    if command in BUILTIN_CMD:
-        print(f"{command} is a shell builtin")
-    elif path := shutil.which(command):
-        print(f"{command} is {path}")
-    else:
-        print(f"{command}: not found")  # Updated error message
-
-
-def run_external_command(command):
-    try:
-        # Execute the command and capture the output
-        result = subprocess.run(command, check=True, text=True, capture_output=True)
-        print(result.stdout, end='')  # Print the output from the command
-    except FileNotFoundError:
-        print(f"{command[0]}: not found")  # Updated error message
-    except subprocess.CalledProcessError as e:
-        print(f"{e.cmd}: command failed with exit code {e.returncode}")
-
-
-def change_directory(path):
-    # Check if the path is ~ and change to the home directory
-    if path == "~":
-        path = os.path.expanduser("~")  # Get the home directory
-    try:
-        os.chdir(path)  # Change the current working directory
-    except FileNotFoundError:
-        print(f"cd: {path}: No such file or directory")  # Error message for invalid path
+def findExecutable(command):
+    paths = os.getenv("PATH", "").split(os.pathsep)
+    for path in paths:
+        executablePath = os.path.join(path, command)
+        if os.path.isfile(executablePath):
+            return executablePath
+    return None
 
 
 def main():
     while True:
         sys.stdout.write("$ ")
         command = input()
-        match command.split():
-            case ["exit", "0"]:
-                exit(0)  # Exit with status code 0
-            case ["echo", *args]:
-                print(*args)
-            case ["type", cmd]:
-                type_cmd(cmd)
-            case ["pwd"]:  # Handle pwd command
-                print(os.getcwd())  # Print the current working directory
-            case ["cd", path]:  # Handle cd command
-                change_directory(path)  # Change the directory
-            case _:
-                # Split the command into a list for external execution
-                external_command = command.split()
-                run_external_command(external_command)
+        if command == "exit 0":
+            sys.exit(0)
+        elif command == "pwd":
+            print(os.getcwd())
+        elif command.startswith("cd"):
+            args = command.split(" ")
+            if len(args) > 1:
+                paths = args[1].strip()
+            else:
+                os.path.expanduser("~")
+            # handle `~` character.
+            if paths.startswith("~"):
+                paths = os.path.expanduser(paths)
+            try:
+                os.chdir(paths)
+            except Exception:
+                print(f"cd: {paths}: No such file or directory")
+        elif command.startswith("echo"):
+            if command.startswith("'") and command.endswith("'"):
+                message = command[6:-1]
+                print(message)
+            else:
+                parts = shlex.split(command[5:])
+                print(" ".join(parts))
+            # print(command[5:])
+        elif command.startswith("type"):
+            seriesCommand = command.split(" ")
+            builtinCommand = seriesCommand[1]
+            if builtinCommand in ("echo", "exit", "type", "pwd", "cd"):
+                print(f"{builtinCommand} is a shell builtin")
+            else:
+                executablePath = findExecutable(builtinCommand)
+                if executablePath:
+                    print(f"{builtinCommand} is {executablePath}")
+                else:
+                    print(f"{builtinCommand}: not found")
+        else:
+            args = shlex.split(command)
+            executablePath = findExecutable(args[0])
+            if executablePath:
+                result = subprocess.run(args, capture_output=True, text=True)
+                print(result.stdout, end="")
+            else:
+                print(f"{command}: command not found")
 
 
 if __name__ == "__main__":
     main()
-    
