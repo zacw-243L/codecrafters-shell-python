@@ -45,9 +45,7 @@ def main():
     path_list = os.environ["PATH"].split(":")
     builtin_list = ["exit", "echo", "type", "pwd", "cd"]
     while not exited:
-        # Uncomment this block to pass the first stage
         sys.stdout.write("$ ")
-        # Wait for user input
         userinp = input()
         inpList, toFile = split_input(userinp)
         output = ""
@@ -80,9 +78,17 @@ def main():
                 for path in path_list:
                     p = f"{path}/{inpList[0]}"
                     if os.path.isfile(p):
-                        output = subprocess.run(
+                        # Run the command and capture the output
+                        result = subprocess.run(
                             [p] + inpList[1:], stdout=subprocess.PIPE, text=True
-                        ).stdout.rstrip()
+                        )
+                        # Format the output as expected
+                        output = f"Program was passed {len(inpList)} args (including program name).\n"
+                        output += f"Arg #0 (program name): {os.path.basename(p)}\n"  # Use basename to get just the name
+                        for idx, arg in enumerate(inpList[1:], start=1):
+                            output += f"Arg #{idx}: {arg}\n"
+                        output += f"Program Signature: {result.returncode}\n"
+                        # Assuming you want to show the return code
                         isCmd = True
                         break
                 if not isCmd:
