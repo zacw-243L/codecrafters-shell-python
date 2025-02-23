@@ -1,97 +1,99 @@
-import os
 import sys
-import shlex
+import os
 import subprocess
 
 
-def findExecutable(command):
-    paths = os.getenv("PATH", "").split(os.pathsep)
-    for path in paths:
-        executablePath = os.path.join(path, command)
-        if os.path.isfile(executablePath):
-            return executablePath
-    return None
+def split_input(inp):
+    i = 0
+    inpList = []
+    toFile = ""
+    curWord = ""
+    while i < len(inp):
+        if inp[i] == "\\":
+            curWord += inp[i + 1]
+            i += 1
+        elif inp[i] == " ":
+            if ">" in curWord:
+                toFile = inp[i + 1:]
+                return inpList, toFile
+            if curWord:
+                inpList.append(curWord)
+            curWord = ""
+        elif inp[i] == "'":
+            i += 1
+            while inp[i] != "'":
+                curWord += inp[i]
+                i += 1
+        elif inp[i] == '"':
+            i += 1
+            while inp[i] != '"':
+                if inp[i] == "\\" and inp[i + 1] in ["\\", "$", '"']:
+                    curWord += inp[i + 1]
+                    i += 2
+                else:
+                    curWord += inp[i]
+                    i += 1
+        else:
+            curWord += inp[i]
+        i += 1
+    inpList.append(curWord)
+    return inpList, toFile
 
 
 def main():
-    while True:
+    exited = False
+    path_list = os.environ["PATH"].split(":")
+    builtin_list = ["exit", "echo", "type", "pwd", "cd"]
+    while not exited:
+        # Uncomment this block to pass the first stage
         sys.stdout.write("$ ")
-        command = input()
-        if command == "exit 0":
-            sys.exit(0)
-        elif command == "pwd":
-            print(os.getcwd())
-        elif command.startswith("cd"):
-            args = command.split(" ")
-            if len(args) > 1:
-                paths = args[1].strip()
-            else:
-                paths = os.path.expanduser("~")
-            # handle `~` character.
-            if paths.startswith("~"):
-                paths = os.path.expanduser(paths)
-            try:
-                os.chdir(paths)
-            except Exception:
-                print(f"cd: {paths}: No such file or directory")
-        elif command.startswith("echo"):
-            # Check for output redirection
-            if '>' in command:
-                parts = command.split('>')
-                command_to_run = parts[0].strip()  # The command before the >
-                output_file = parts[1].strip() if len(parts) > 1 else None  # The file to redirect to
-
-                # Prepare the message to echo
-                if command_to_run.startswith("echo"):
-                    message = command_to_run[5:].strip()  # Get the message after 'echo '
-                    # Remove surrounding quotes if present
-                    if message.startswith("'") and message.endswith("'"):
-                        message = message[1:-1]  # Remove single quotes
-                    elif message.startswith('"') and message.endswith('"'):
-                        message = message[1:-1]  # Remove double quotes
-                    # Write the message to the output file
-                    if output_file:
-                        with open(output_file, 'w') as f:
-                            f.write(message)
-            else:
-                # Handle normal echo without redirection
-                parts = shlex.split(command[5:])
-                print(" ".join(parts))
-        elif command.startswith("type"):
-            seriesCommand = command.split(" ")
-            builtinCommand = seriesCommand[1]
-            if builtinCommand in ("echo", "exit", "type", "pwd", "cd"):
-                print(f"{builtinCommand} is a shell builtin")
-            else:
-                executablePath = findExecutable(builtinCommand)
-                if executablePath:
-                    print(f"{builtinCommand} is {executablePath}")
+        # Wait for user input
+        userinp = input()
+        inpList, toFile = split_input(userinp)
+        output = ""
+        match inpList[0]:
+            case "cd":
+                path = inpList[1]
+                if path == "~":
+                    os.chdir(os.environ["HOME"])
+                elif os.path.isdir(path):
+                    os.chdir(path)
                 else:
-                    print(f"{builtinCommand}: not found")
+                    output = path + ": No such file or directory"
+            case "pwd":
+                output = os.getcwd()
+            case "type":
+                for path in path_list:
+                    if os.path.isfile(f"{path}/{inpList[1]}"):
+                        output = inpList[1] + " is " + f"{path}/{inpList[1]}"
+                        break
+                if inpList[1] in builtin_list:
+                    output = inpList[1] + " is a shell builtin"
+                if not output:
+                    output = inpList[1] + ": not found"
+            case "echo":
+                output = " ".join(inpList[1:])
+            case "exit":
+                exited = True
+            case _:
+                isCmd = False
+                for path in path_list:
+                    p = f"{path}/{inpList[0]}"
+                    if os.path.isfile(p):
+                        output = subprocess.run(
+                            [p] + inpList[1:], stdout=subprocess.PIPE, text=True
+                        ).stdout.rstrip()
+                        isCmd = True
+                        break
+                if not isCmd:
+                    output = userinp + ": command not found"
+        if not toFile:
+            if output:
+                print(output, file=sys.stdout)
         else:
-            # Check for output redirection
-            if '>' in command:
-                parts = command.split('>')
-                command_to_run = parts[0].strip()  # The command before the >
-                output_file = parts[1].strip() if len(parts) > 1 else None  # The file to redirect to
-
-                # Prepare the command arguments
-                args = shlex.split(command_to_run)
-
-                # Run the command and redirect output
-                if output_file:
-                    with open(output_file, 'w') as f:
-                        result = subprocess.run(args, stdout=f, stderr=subprocess.STDOUT)
-            else:
-                args = shlex.split(command)
-                executablePath = findExecutable(args[0])
-                if executablePath:
-                    result = subprocess.run(args, capture_output=True, text=True)
-                    print(result.stdout, end="")
-                else:
-                    print(f"{command}: command not found")
+            with open(toFile, "a") as f:
+                print(output, end="", file=f)
 
 
 if __name__ == "__main__":
     main()
-    
