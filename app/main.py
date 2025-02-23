@@ -26,7 +26,7 @@ def main():
             if len(args) > 1:
                 paths = args[1].strip()
             else:
-                os.path.expanduser("~")
+                paths = os.path.expanduser("~")
             # handle `~` character.
             if paths.startswith("~"):
                 paths = os.path.expanduser(paths)
@@ -41,7 +41,6 @@ def main():
             else:
                 parts = shlex.split(command[5:])
                 print(" ".join(parts))
-            # print(command[5:])
         elif command.startswith("type"):
             seriesCommand = command.split(" ")
             builtinCommand = seriesCommand[1]
@@ -54,14 +53,29 @@ def main():
                 else:
                     print(f"{builtinCommand}: not found")
         else:
-            args = shlex.split(command)
-            executablePath = findExecutable(args[0])
-            if executablePath:
-                result = subprocess.run(args, capture_output=True, text=True)
-                print(result.stdout, end="")
+            # Check for output redirection
+            if '>' in command:
+                parts = command.split('>')
+                command_to_run = parts[0].strip()  # The command before the >
+                output_file = parts[1].strip() if len(parts) > 1 else None  # The file to redirect to
+
+                # Prepare the command arguments
+                args = shlex.split(command_to_run)
+
+                # Run the command and redirect output
+                if output_file:
+                    with open(output_file, 'w') as f:
+                        result = subprocess.run(args, stdout=f, stderr=subprocess.STDOUT)
             else:
-                print(f"{command}: command not found")
+                args = shlex.split(command)
+                executablePath = findExecutable(args[0])
+                if executablePath:
+                    result = subprocess.run(args, capture_output=True, text=True)
+                    print(result.stdout, end="")
+                else:
+                    print(f"{command}: command not found")
 
 
 if __name__ == "__main__":
     main()
+    
