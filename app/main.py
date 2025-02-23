@@ -3,58 +3,97 @@ import os
 import subprocess
 
 
-def split_command(input_str):
-    parts = input_str.split()
-    if '>' in parts:
-        idx = parts.index('>')
-        cmd_args = parts[:idx]
-        output_file = parts[idx + 1]
-        return cmd_args, output_file
-    return parts, None
+def split_input(inp):
+    i = 0
+    inpList = []
+    toFile = ""
+    curWord = ""
+    while i < len(inp):
+        if inp[i] == "\\":
+            curWord += inp[i + 1]
+            i += 1
+        elif inp[i] == " ":
+            if ">" in curWord:
+                toFile = inp[i + 1:]
+                return inpList, toFile
+            if curWord:
+                inpList.append(curWord)
+            curWord = ""
+        elif inp[i] == "'":
+            i += 1
+            while inp[i] != "'":
+                curWord += inp[i]
+                i += 1
+        elif inp[i] == '"':
+            i += 1
+            while inp[i] != '"':
+                if inp[i] == "\\" and inp[i + 1] in ["\\", "$", '"']:
+                    curWord += inp[i + 1]
+                    i += 2
+                else:
+                    curWord += inp[i]
+                    i += 1
+        else:
+            curWord += inp[i]
+        i += 1
+    inpList.append(curWord)
+    return inpList, toFile
 
 
 def main():
-    while True:
+    exited = False
+    path_list = os.environ["PATH"].split(":")
+    builtin_list = ["exit", "echo", "type", "pwd", "cd"]
+    while not exited:
+        # Uncomment this block to pass the first stage
         sys.stdout.write("$ ")
-        user_input = input().strip()
-        if not user_input:
-            continue
-
-        # Split command and handle redirection
-        cmd_args, output_file = split_command(user_input)
-        if not cmd_args:
-            continue
-
-        # Handle built-in commands
-        if cmd_args[0] == "cd":
-            try:
-                os.chdir(cmd_args[1] if len(cmd_args) > 1 else os.environ["HOME"])
-            except Exception as e:
-                print(f"cd: {e}", file=sys.stderr)
-            continue
-        elif cmd_args[0] == "pwd":
-            output = os.getcwd()
-        elif cmd_args[0] == "exit":
-            break
-        else:
-            # Run external programs
-            try:
-                if output_file:
-                    # Redirect stdout to the specified file
-                    with open(output_file, 'w') as f:
-                        subprocess.run(cmd_args, stdout=f, stderr=subprocess.PIPE, check=True, text=True)
+        # Wait for user input
+        userinp = input()
+        inpList, toFile = split_input(userinp)
+        output = ""
+        match inpList[0]:
+            case "cd":
+                path = inpList[1]
+                if path == "~":
+                    os.chdir(os.environ["HOME"])
+                elif os.path.isdir(path):
+                    os.chdir(path)
                 else:
-                    # Capture and print output
-                    result = subprocess.run(cmd_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                    print(result.stdout, end='')
-                    if result.stderr:
-                        print(result.stderr, file=sys.stderr, end='')
-            except FileNotFoundError:
-                print(f"{cmd_args[0]}: command not found", file=sys.stderr)
-            except subprocess.CalledProcessError as e:
-                print(e.stderr, file=sys.stderr, end='')
+                    output = path + ": No such file or directory"
+            case "pwd":
+                output = os.getcwd()
+            case "type":
+                for path in path_list:
+                    if os.path.isfile(f"{path}/{inpList[1]}"):
+                        output = inpList[1] + " is " + f"{path}/{inpList[1]}"
+                        break
+                if inpList[1] in builtin_list:
+                    output = inpList[1] + " is a shell builtin"
+                if not output:
+                    output = inpList[1] + ": not found"
+            case "echo":
+                output = " ".join(inpList[1:])
+            case "exit":
+                exited = True
+            case _:
+                isCmd = False
+                for path in path_list:
+                    p = f"{path}/{inpList[0]}"
+                    if os.path.isfile(p):
+                        output = subprocess.run(
+                            [p] + inpList[1:], stdout=subprocess.PIPE, text=True
+                        ).stdout.rstrip()
+                        isCmd = True
+                        break
+                if not isCmd:
+                    output = userinp + ": command not found"
+        if not toFile:
+            if output:
+                print(output, file=sys.stdout)
+        else:
+            with open(toFile, "a") as f:
+                print(output, end="", file=f)
 
 
 if __name__ == "__main__":
     main()
-    
