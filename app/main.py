@@ -1,21 +1,31 @@
 import sys
+import shutil
+
+BUILTIN_CMD = {"exit", "echo", "type"}
+
+
+def type_cmd(command):
+    if command in BUILTIN_CMD:
+        print(f"{command} is a shell builtin")
+    elif path := shutil.which(command):
+        print(f"{command} is {path}")
+    else:
+        print(f"{command}: not found")
 
 
 def main():
-    while 1:
+    while True:
         sys.stdout.write("$ ")
         command = input()
-        match command:
-            case command if command.startswith("echo "):
-                sys.stdout.write(f"{command[len("echo "):]}\n")
-            case "exit 0":
-                return 0
-            case command if command.startswith("type invalid"):
-                sys.stdout.write(f"{command[len('type '):]}: not found\n")
-            case command if command.startswith("type "):
-                sys.stdout.write(f"{command[len('type '):]} is a shell builtin\n")
+        match command.split():
+            case ["exit", "0"]:
+                exit()
+            case ["echo", *args]:
+                print(*args)
+            case ["type", cmd]:
+                type_cmd(cmd)
             case _:
-                sys.stdout.write(f"{command}: command not found\n")
+                print(f"{command}: command not found")
 
 
 if __name__ == "__main__":
