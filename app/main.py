@@ -17,9 +17,8 @@ SHELL_BUILTINS: Final[list[str]] = [
 
 
 def parse_programs_in_path(path: str, programs: dict[str, pathlib.Path]) -> None:
-    """Creates a mapping of programs in path to their paths"""
     p = pathlib.Path(path)
-    if p.exists() and p.is_dir():  # Check if the path exists and is a directory
+    if p.exists() and p.is_dir():
         for b in p.iterdir():
             if b.is_file() and os.access(b, os.X_OK):
                 programs[b.name] = b
@@ -64,37 +63,34 @@ def main():
         close_out = False
         close_err = False
         try:
-            if ">" in cmds:
-                out_index = cmds.index(">")
-                out = open(cmds[out_index + 1], "w")
-                close_out = True
-                cmds = cmds[:out_index] + cmds[out_index + 2:]
-            elif "1>" in cmds:
-                out_index = cmds.index("1>")
-                out = open(cmds[out_index + 1], "w")
-                close_out = True
-                cmds = cmds[:out_index] + cmds[out_index + 2:]
-            if "2>" in cmds:
-                out_index = cmds.index("2>")
-                err = open(cmds[out_index + 1], "w")
-                close_err = True
-                cmds = cmds[:out_index] + cmds[out_index + 2:]
-            if ">>" in cmds:
-                out_index = cmds.index(">>")
-                out = open(cmds[out_index + 1], "a")
-                close_out = True
-                cmds = cmds[:out_index] + cmds[out_index + 2:]
-            elif "1>>" in cmds:
-                out_index = cmds.index("1>>")
-                out = open(cmds[out_index + 1], "a")
-                close_out = True
-                cmds = cmds[:out_index] + cmds[out_index + 2:]
-            if "2>>" in cmds:
-                out_index = cmds.index("2>>")
-                err = open(cmds[out_index + 1], "a")
-                close_err = True
-                cmds = cmds[:out_index] + cmds[out_index + 2:]
-            handle_all(cmds, out, err)
+            # Redirection (stdout, stderr)
+            for symbol, mode, stream, close_flag in [
+                (">", "w", "out", "close_out"),
+                ("1>", "w", "out", "close_out"),
+                ("2>", "w", "err", "close_err"),
+                (">>", "a", "out", "close_out"),
+                ("1>>", "a", "out", "close_out"),
+                ("2>>", "a", "err", "close_err"),
+            ]:
+                if symbol in cmds:
+                    idx = cmds.index(symbol)
+                    f = open(cmds[idx + 1], mode)
+                    if stream == "out":
+                        out = f
+                        close_out = True
+                    else:
+                        err = f
+                        close_err = True
+                    cmds = cmds[:idx] + cmds[idx + 2:]
+
+            # Pipeline support
+            if "|" in cmds:
+                pipe_idx = cmds.index("|")
+                lhs = cmds[:pipe_idx]
+                rhs = cmds[pipe_idx + 1:]
+                execute_pipeline(lhs, rhs, out, err)
+            else:
+                handle_all(cmds, out, err)
         finally:
             if close_out:
                 out.close()
@@ -103,7 +99,6 @@ def main():
 
 
 def handle_all(cmds: list[str], out: TextIO, err: TextIO):
-    # Wait for user input
     match cmds:
         case ["echo", *s]:
             out.write(" ".join(s) + "\n")
@@ -120,6 +115,17 @@ def handle_all(cmds: list[str], out: TextIO, err: TextIO):
             process.wait()
         case command:
             out.write(f"{' '.join(command)}: command not found\n")
+
+
+def execute_pipeline(cmd1: list[str], cmd2: list[str], out: TextIO, err: TextIO):
+    try:
+        p1 = subprocess.Popen(cmd1, stdout=subprocess.PIPE, stderr=err)
+        p2 = subprocess.Popen(cmd2, stdin=p1.stdout, stdout=out, stderr=err)
+        p1.stdout.close()
+        p1.wait()
+        p2.wait()
+    except Exception as e:
+        err.write(f"Pipeline error: {e}\n")
 
 
 def type_command(command: str, out: TextIO, err: TextIO):
