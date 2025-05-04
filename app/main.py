@@ -6,6 +6,7 @@ import sys
 import pathlib
 import os
 from typing import Final, TextIO
+from io import StringIO
 
 SHELL_BUILTINS: Final[list[str]] = [
     "echo",
@@ -63,7 +64,6 @@ def main():
         close_out = False
         close_err = False
         try:
-            # Redirection (stdout, stderr)
             for symbol, mode, stream, close_flag in [
                 (">", "w", "out", "close_out"),
                 ("1>", "w", "out", "close_out"),
@@ -83,12 +83,17 @@ def main():
                         close_err = True
                     cmds = cmds[:idx] + cmds[idx + 2:]
 
-            # Pipeline support
             if "|" in cmds:
-                pipe_idx = cmds.index("|")
-                lhs = cmds[:pipe_idx]
-                rhs = cmds[pipe_idx + 1:]
-                execute_pipeline(lhs, rhs, out, err)
+                parts = []
+                current = []
+                for tok in cmds:
+                    if tok == "|":
+                        parts.append(current)
+                        current = []
+                    else:
+                        current.append(tok)
+                parts.append(current)
+                execute_pipeline_parts(parts, out, err)
             else:
                 handle_all(cmds, out, err)
         finally:
@@ -117,15 +122,71 @@ def handle_all(cmds: list[str], out: TextIO, err: TextIO):
             out.write(f"{' '.join(command)}: command not found\n")
 
 
-def execute_pipeline(cmd1: list[str], cmd2: list[str], out: TextIO, err: TextIO):
-    try:
-        p1 = subprocess.Popen(cmd1, stdout=subprocess.PIPE, stderr=err)
-        p2 = subprocess.Popen(cmd2, stdin=p1.stdout, stdout=out, stderr=err)
-        p1.stdout.close()
-        p1.wait()
-        p2.wait()
-    except Exception as e:
-        err.write(f"Pipeline error: {e}\n")
+def is_builtin(cmd: str) -> bool:
+    return cmd in SHELL_BUILTINS
+
+
+def execute_single_command(cmd: list[str], stdin: TextIO, stdout: TextIO, stderr: TextIO):
+    if not cmd:
+        return
+    if is_builtin(cmd[0]):
+        original_stdin = sys.stdin
+        original_stdout = sys.stdout
+        original_stderr = sys.stderr
+        sys.stdin = stdin
+        sys.stdout = stdout
+        sys.stderr = stderr
+        try:
+            handle_all(cmd, stdout, stderr)
+        finally:
+            sys.stdin = original_stdin
+            sys.stdout = original_stdout
+            sys.stderr = original_stderr
+    elif cmd[0] in PROGRAMS_IN_PATH:
+        subprocess.run(cmd, stdin=stdin, stdout=stdout, stderr=stderr)
+    else:
+        stderr.write(f"{cmd[0]}: command not found\n")
+
+
+def execute_pipeline_parts(commands: list[list[str]], final_out: TextIO, final_err: TextIO):
+    processes = []
+    num_cmds = len(commands)
+    prev_read = None
+
+    for i, cmd in enumerate(commands):
+        if i == 0:
+            read_end, write_end = os.pipe()
+            if is_builtin(cmd[0]):
+                with os.fdopen(write_end, 'w') as w:
+                    execute_single_command(cmd, sys.stdin, w, final_err)
+                prev_read = os.fdopen(read_end)
+            else:
+                p = subprocess.Popen(cmd, stdout=write_end, stderr=final_err, close_fds=True)
+                os.close(write_end)
+                prev_read = os.fdopen(read_end)
+                processes.append(p)
+        elif i == num_cmds - 1:
+            execute_single_command(cmd, prev_read, final_out, final_err)
+            if prev_read:
+                prev_read.close()
+        else:
+            read_end, write_end = os.pipe()
+            if is_builtin(cmd[0]):
+                with os.fdopen(write_end, 'w') as w:
+                    execute_single_command(cmd, prev_read, w, final_err)
+                if prev_read:
+                    prev_read.close()
+                prev_read = os.fdopen(read_end)
+            else:
+                p = subprocess.Popen(cmd, stdin=prev_read, stdout=write_end, stderr=final_err, close_fds=True)
+                if prev_read:
+                    prev_read.close()
+                os.close(write_end)
+                prev_read = os.fdopen(read_end)
+                processes.append(p)
+
+    for p in processes:
+        p.wait()
 
 
 def type_command(command: str, out: TextIO, err: TextIO):
