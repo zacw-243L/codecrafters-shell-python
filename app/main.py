@@ -72,7 +72,8 @@ def main():
                 g, h = [], []
                 for i in U:
                     if i == "|":
-                        g.append(h); h = []
+                        g.append(h);
+                        h = []
                     else:
                         h.append(i)
                 g.append(h)
@@ -88,12 +89,12 @@ def j(k: list[str], l: T, m: T):
     match k:
         case ["echo", *n]:
             l.write(" ".join(n) + "\n")
-        case ["type", o]:
-            t(o, l, m)
+        case ["type", z_]:
+            t(z_, l, m)
         case ["exit", "0"]:
             y.exit(0)
         case ["pwd"]:
-            l.write(f"{os.getcwd()}\n")
+            l.write(f"{o.getcwd()}\n")
         case ["cd", p_]:
             v(p_, l, m)
         case [q_, *r]:
