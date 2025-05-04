@@ -1,213 +1,183 @@
-from collections.abc import Mapping
-import readline
-import shlex
-import subprocess
-import sys
-import pathlib
-import os
-from typing import Final, TextIO
-from io import StringIO
+from collections.abc import Mapping as M
+import readline as r
+import shlex as s
+import subprocess as u
+import sys as y
+import pathlib as p
+import os as o
+from typing import Final as F, TextIO as T
+from io import StringIO as I
 
-SHELL_BUILTINS: Final[list[str]] = [
-    "echo",
-    "exit",
-    "type",
-    "pwd",
-    "cd",
-]
+A: F[list[str]] = ["echo", "exit", "type", "pwd", "cd"]
 
 
-def parse_programs_in_path(path: str, programs: dict[str, pathlib.Path]) -> None:
-    p = pathlib.Path(path)
-    if p.exists() and p.is_dir():
-        for b in p.iterdir():
-            if b.is_file() and os.access(b, os.X_OK):
-                programs[b.name] = b
+def B(C: str, D: dict[str, p.Path]) -> None:
+    E = p.Path(C)
+    if E.exists() and E.is_dir():
+        for F_ in E.iterdir():
+            if F_.is_file() and o.access(F_, o.X_OK):
+                D[F_.name] = F_
 
 
-def generate_program_paths() -> Mapping[str, pathlib.Path]:
-    programs: dict[str, pathlib.Path] = {}
-    for p in (os.getenv("PATH") or "").split(":"):
-        parse_programs_in_path(p, programs)
-    return programs
+def G() -> M[str, p.Path]:
+    H: dict[str, p.Path] = {}
+    for I_ in (o.getenv("PATH") or "").split(":"):
+        B(I_, H)
+    return H
 
 
-PROGRAMS_IN_PATH: Final[Mapping[str, pathlib.Path]] = {**generate_program_paths()}
-COMPLETIONS: Final[list[str]] = [*SHELL_BUILTINS, *PROGRAMS_IN_PATH.keys()]
+J: F[M[str, p.Path]] = {**G()}
+K: F[list[str]] = [*A, *J.keys()]
 
 
-def display_matches(substitution, matches, longest_match_length):
+def L(M_, N, O):
     print()
-    if matches:
-        print("  ".join(matches))
-    print("$ " + substitution, end="")
+    if N:
+        print("  ".join(N))
+    print("$ " + M_, end="")
 
 
-def complete(text: str, state: int) -> str | None:
-    matches = list(set([s for s in COMPLETIONS if s.startswith(text)]))
-    if len(matches) == 1:
-        return matches[state] + " " if state < len(matches) else None
-    return matches[state] if state < len(matches) else None
+def P(Q: str, R: int) -> str | None:
+    S = list(set([T for T in K if T.startswith(Q)]))
+    if len(S) == 1:
+        return S[R] + " " if R < len(S) else None
+    return S[R] if R < len(S) else None
 
 
-readline.set_completion_display_matches_hook(display_matches)
-readline.parse_and_bind("tab: complete")
-readline.set_completer(complete)
+r.set_completion_display_matches_hook(L)
+r.parse_and_bind("tab: complete")
+r.set_completer(P)
 
 
 def main():
     while True:
-        sys.stdout.write("$ ")
-        cmds = shlex.split(input())
-        out = sys.stdout
-        err = sys.stderr
-        close_out = False
-        close_err = False
+        y.stdout.write("$ ")
+        U = s.split(input())
+        V = y.stdout
+        W = y.stderr
+        X = False
+        Z = False
         try:
-            for symbol, mode, stream, close_flag in [
-                (">", "w", "out", "close_out"),
-                ("1>", "w", "out", "close_out"),
-                ("2>", "w", "err", "close_err"),
-                (">>", "a", "out", "close_out"),
-                ("1>>", "a", "out", "close_out"),
-                ("2>>", "a", "err", "close_err"),
-            ]:
-                if symbol in cmds:
-                    idx = cmds.index(symbol)
-                    f = open(cmds[idx + 1], mode)
-                    if stream == "out":
-                        out = f
-                        close_out = True
+            for a, b, c, d in [(">", "w", "V", "X"), ("1>", "w", "V", "X"), ("2>", "w", "W", "Z"),
+                               (">>", "a", "V", "X"), ("1>>", "a", "V", "X"), ("2>>", "a", "W", "Z")]:
+                if a in U:
+                    e = U.index(a)
+                    f = open(U[e + 1], b)
+                    if c == "V":
+                        V, X = f, True
                     else:
-                        err = f
-                        close_err = True
-                    cmds = cmds[:idx] + cmds[idx + 2:]
-
-            if "|" in cmds:
-                parts = []
-                current = []
-                for tok in cmds:
-                    if tok == "|":
-                        parts.append(current)
-                        current = []
+                        W, Z = f, True
+                    U = U[:e] + U[e + 2:]
+            if "|" in U:
+                g, h = [], []
+                for i in U:
+                    if i == "|":
+                        g.append(h); h = []
                     else:
-                        current.append(tok)
-                parts.append(current)
-                execute_pipeline_parts(parts, out, err)
+                        h.append(i)
+                g.append(h)
+                q(g, V, W)
             else:
-                handle_all(cmds, out, err)
+                j(U, V, W)
         finally:
-            if close_out:
-                out.close()
-            if close_err:
-                err.close()
+            if X: V.close()
+            if Z: W.close()
 
 
-def handle_all(cmds: list[str], out: TextIO, err: TextIO):
-    match cmds:
-        case ["echo", *s]:
-            out.write(" ".join(s) + "\n")
-        case ["type", s]:
-            type_command(s, out, err)
+def j(k: list[str], l: T, m: T):
+    match k:
+        case ["echo", *n]:
+            l.write(" ".join(n) + "\n")
+        case ["type", o]:
+            t(o, l, m)
         case ["exit", "0"]:
-            sys.exit(0)
+            y.exit(0)
         case ["pwd"]:
-            out.write(f"{os.getcwd()}\n")
-        case ["cd", dir]:
-            cd(dir, out, err)
-        case [cmd, *args] if cmd in PROGRAMS_IN_PATH:
-            process = subprocess.Popen([cmd, *args], stdout=out, stderr=err)
-            process.wait()
-        case command:
-            out.write(f"{' '.join(command)}: command not found\n")
+            l.write(f"{os.getcwd()}\n")
+        case ["cd", p_]:
+            v(p_, l, m)
+        case [q_, *r]:
+            if q_ in J:
+                s_ = u.Popen([q_, *r], stdout=l, stderr=m)
+                s_.wait()
+            else:
+                l.write(f"{' '.join(k)}: command not found\n")
 
 
-def is_builtin(cmd: str) -> bool:
-    return cmd in SHELL_BUILTINS
+def w(x: str) -> bool:
+    return x in A
 
 
-def execute_single_command(cmd: list[str], stdin: TextIO, stdout: TextIO, stderr: TextIO):
-    if not cmd:
-        return
-    if is_builtin(cmd[0]):
-        original_stdin = sys.stdin
-        original_stdout = sys.stdout
-        original_stderr = sys.stderr
-        sys.stdin = stdin
-        sys.stdout = stdout
-        sys.stderr = stderr
+def y_(z: list[str], aa: T, ab: T, ac: T):
+    if not z: return
+    if w(z[0]):
+        ad, ae, af = y.stdin, y.stdout, y.stderr
+        y.stdin, y.stdout, y.stderr = aa, ab, ac
         try:
-            handle_all(cmd, stdout, stderr)
+            j(z, ab, ac)
         finally:
-            sys.stdin = original_stdin
-            sys.stdout = original_stdout
-            sys.stderr = original_stderr
-    elif cmd[0] in PROGRAMS_IN_PATH:
-        subprocess.run(cmd, stdin=stdin, stdout=stdout, stderr=stderr)
+            y.stdin, y.stdout, y.stderr = ad, ae, af
+    elif z[0] in J:
+        u.run(z, stdin=aa, stdout=ab, stderr=ac)
     else:
-        stderr.write(f"{cmd[0]}: command not found\n")
+        ac.write(f"{z[0]}: command not found\n")
 
 
-def execute_pipeline_parts(commands: list[list[str]], final_out: TextIO, final_err: TextIO):
-    processes = []
-    num_cmds = len(commands)
-    prev_read = None
-
-    for i, cmd in enumerate(commands):
-        if i == 0:
-            read_end, write_end = os.pipe()
-            if is_builtin(cmd[0]):
-                with os.fdopen(write_end, 'w') as w:
-                    execute_single_command(cmd, sys.stdin, w, final_err)
-                prev_read = os.fdopen(read_end)
+def q(ag: list[list[str]], ah: T, ai: T):
+    aj = []
+    ak = len(ag)
+    al = None
+    for am, an in enumerate(ag):
+        if am == 0:
+            ao, ap = o.pipe()
+            if w(an[0]):
+                with o.fdopen(ap, 'w') as aq:
+                    y_(an, y.stdin, aq, ai)
+                al = o.fdopen(ao)
             else:
-                p = subprocess.Popen(cmd, stdout=write_end, stderr=final_err, close_fds=True)
-                os.close(write_end)
-                prev_read = os.fdopen(read_end)
-                processes.append(p)
-        elif i == num_cmds - 1:
-            execute_single_command(cmd, prev_read, final_out, final_err)
-            if prev_read:
-                prev_read.close()
+                ar = u.Popen(an, stdout=ap, stderr=ai, close_fds=True)
+                o.close(ap)
+                al = o.fdopen(ao)
+                aj.append(ar)
+        elif am == ak - 1:
+            y_(an, al, ah, ai)
+            if al: al.close()
         else:
-            read_end, write_end = os.pipe()
-            if is_builtin(cmd[0]):
-                with os.fdopen(write_end, 'w') as w:
-                    execute_single_command(cmd, prev_read, w, final_err)
-                if prev_read:
-                    prev_read.close()
-                prev_read = os.fdopen(read_end)
+            as_, at = o.pipe()
+            if w(an[0]):
+                with o.fdopen(at, 'w') as au:
+                    y_(an, al, au, ai)
+                if al: al.close()
+                al = o.fdopen(as_)
             else:
-                p = subprocess.Popen(cmd, stdin=prev_read, stdout=write_end, stderr=final_err, close_fds=True)
-                if prev_read:
-                    prev_read.close()
-                os.close(write_end)
-                prev_read = os.fdopen(read_end)
-                processes.append(p)
-
-    for p in processes:
-        p.wait()
+                av = u.Popen(an, stdin=al, stdout=at, stderr=ai, close_fds=True)
+                if al: al.close()
+                o.close(at)
+                al = o.fdopen(as_)
+                aj.append(av)
+    for aw in aj:
+        aw.wait()
 
 
-def type_command(command: str, out: TextIO, err: TextIO):
-    if command in SHELL_BUILTINS:
-        out.write(f"{command} is a shell builtin\n")
+def t(ax: str, ay: T, az: T):
+    if ax in A:
+        ay.write(f"{ax} is a shell builtin\n")
         return
-    if command in PROGRAMS_IN_PATH:
-        out.write(f"{command} is {PROGRAMS_IN_PATH[command]}\n")
+    if ax in J:
+        ay.write(f"{ax} is {J[ax]}\n")
         return
-    out.write(f"{command}: not found\n")
+    ay.write(f"{ax}: not found\n")
 
 
-def cd(path: str, out: TextIO, err: TextIO) -> None:
-    if path.startswith("~"):
-        home = os.getenv("HOME") or "/root"
-        path = path.replace("~", home)
-    p = pathlib.Path(path)
-    if not p.exists():
-        out.write(f"cd: {path}: No such file or directory\n")
+def v(ba: str, bb: T, bc: T) -> None:
+    if ba.startswith("~"):
+        bd = o.getenv("HOME") or "/root"
+        ba = ba.replace("~", bd)
+    be = p.Path(ba)
+    if not be.exists():
+        bb.write(f"cd: {ba}: No such file or directory\n")
         return
-    os.chdir(p)
+    o.chdir(be)
 
 
 if __name__ == "__main__":
