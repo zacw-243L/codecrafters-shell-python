@@ -220,8 +220,8 @@ def main():
                 parts = command_foo.split('>>')
             cmd_part = parts[0].strip()
             file_part = parts[1].strip()
-            with open(file_part, 'a') as f:
-                subprocess.run(cmd_part, shell=True, stdout=f)
+            with open(file_part, 'a') as f:  # Open the file in append mode
+                subprocess.run(cmd_part, shell=True, stdout=f)  # Append output to the file
             continue
 
         match identifier:
