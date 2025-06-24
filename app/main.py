@@ -113,6 +113,13 @@ def j(k: list[str], l: T, m: T):
                             readline_mod.add_history(hist_line)
             except Exception as e:
                 m.write(f"history -r: {e}\n")
+        case ["history", "-w", file]:
+            try:
+                with open(file, "w") as f:
+                    for cmd in HISTORY:
+                        f.write(cmd + "\n")
+            except Exception as e:
+                m.write(f"history -w: {e}\n")
         case [q_, *r_]:
             if q_ in J:
                 s_ = u.Popen([q_, *r_], stdout=l, stderr=m)
