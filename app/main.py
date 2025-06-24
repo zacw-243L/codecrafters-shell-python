@@ -199,37 +199,42 @@ class Autocomplete:
         if not results:
             return None
 
-        self.tab_count += 1
+        if state == 0:
+            self.tab_count += 1
 
         if len(results) == 1:
             # Single match: complete with a space
-            self.tab_count = 0  # Reset tab count
+            self.tab_count = 0
             return results[0] + ' '
 
-        if self.tab_count == 1:
-            # First Tab: ring bell for multiple matches
-            print('\a', end='', flush=True)
-            return None
+        # Compute longest common prefix
+        prefix = results[0]
+        for cmd in results[1:]:
+            for i, (c1, c2) in enumerate(zip(prefix, cmd)):
+                if c1 != c2:
+                    prefix = prefix[:i]
+                    break
+            else:
+                if len(cmd) < len(prefix):
+                    prefix = cmd
+
+        # Check if prefix is a complete command
+        is_complete = any(cmd == prefix for cmd in results)
+
+        if self.tab_count == 1 or is_complete:
+            # First Tab or complete prefix: complete to longest common prefix
+            return prefix + (' ' if is_complete and len([x for x in self.commands if x == prefix]) == 1 else '')
 
         if self.tab_count == 2:
-            # Second Tab: print all matches and redisplay prompt
+            # Second Tab: ring bell and list matches
+            print('\a', end='', flush=True)
             print('\n' + '  '.join(results))
             print(f'$ {text}', end='', flush=True)
             return None
 
-        # For partial completion (subsequent Tabs or single prefix match)
-        if state == 0:
-            prefix = results[0]
-            for cmd in results[1:]:
-                for i, (c1, c2) in enumerate(zip(prefix, cmd)):
-                    if c1 != c2:
-                        prefix = prefix[:i]
-                        break
-                else:
-                    if len(cmd) < len(prefix):
-                        prefix = cmd
-            return prefix + (' ' if len([x for x in self.commands if x.startswith(prefix)]) == 1 else '')
-
+        # Subsequent Tabs: continue listing matches
+        print('\n' + '  '.join(results))
+        print(f'$ {text}', end='', flush=True)
         return None
 
 
@@ -294,7 +299,6 @@ def main():
             with open(file_part, 'a') as f:  # Open the file in append mode
                 subprocess.run(cmd_part, shell=True, stdout=f)  # Append output to the file
             continue
-
 
         match identifier:
             case 'exit':
