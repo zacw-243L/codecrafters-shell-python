@@ -27,11 +27,11 @@ def P(Q: str, R: int) -> str | None:
     return S[R] if R < len(S) else None
 
 
-readline_mod.parse_and_bind("tab: complete")
-readline_mod.parse_and_bind("set editing-mode emacs")
-
+readline_mod.clear_history()
 readline_mod.set_completer(P)
 readline_mod.set_completion_display_matches_hook(L)
+readline_mod.parse_and_bind("tab: complete")
+readline_mod.set_completer_delims("\t")
 
 
 def B(C: str, D: dict[str, p.Path]) -> None:
