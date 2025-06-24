@@ -1,222 +1,383 @@
 import sys
 import os
+import shutil
 import subprocess
-import re
-import shlex
+from pathlib import Path
+from copy import copy
 import readline
 
 
-def main():
-    builtins = ['echo', 'exit', 'type', 'pwd', 'cd']
-    readline.set_completion_display_matches_hook(display_matches)
-    readline.parse_and_bind("tab: complete")
-    readline.set_completer(completer)
+def parser(string, as_list=False):
+    string_builder = str()
+    result = []
 
-    while True:
-        sys.stdout.write("$ ")
-        command = input()
+    is_single_quoted = False
+    is_double_quoted = False
+    is_escaped = False
 
-        if "2>>" in command:
-            parts = shlex.split(command)
-            split_index = parts.index("2>>")
-            command_args = parts[:split_index]
-            error_file = parts[split_index + 1]
-            with open(error_file, "a") as f:
-                result = subprocess.run(
-                    command_args, stderr=f, text=True
-                )
+    for x, char in enumerate(string):
+        if is_escaped:
+            is_escaped = False
             continue
-        if "1>>" in command or ">>" in command:
-            parts = shlex.split(command)
-            if "1>>" in parts:
-                split_index = parts.index("1>>")
+
+        if char == "'":
+            if is_double_quoted:
+                string_builder += char
+            elif is_single_quoted:
+                is_single_quoted = False
             else:
-                split_index = parts.index(">>")
-            command_args = parts[:split_index]
-            error_file = parts[split_index + 1]
-            with open(error_file, "a") as f:
-                result = subprocess.run(
-                    command_args, stdout=f, text=True
-                )
+                is_single_quoted = True
             continue
-        if "2>" in command:
-            parts = shlex.split(command)
-            split_index = parts.index("2>")
-            command_args = parts[:split_index]
-            error_file = parts[split_index + 1]
-            with open(error_file, "w") as f:
-                result = subprocess.run(
-                    command_args, stderr=f, text=True
-                )
-            continue
-        if ">" in command or "1>" in command:
-            parts = shlex.split(command)
-            if ">" in parts:
-                split_index = parts.index(">")
+
+        if char == '"':
+            if is_single_quoted:
+                string_builder += char
+            elif is_double_quoted:
+                is_double_quoted = False
             else:
-                split_index = parts.index("1>")
-            command_args = parts[:split_index]
-            output_file = parts[split_index + 1]
-            with open(output_file, "w") as f:
-                result = subprocess.run(
-                    command_args, stdout=f, text=True
-                )
+                is_double_quoted = True
             continue
-        if command == "exit 0":
-            sys.exit(0)
-        elif command.startswith('echo'):
-            # print(echo(command))
-            echo(command)
-        elif command.startswith('type'):
-            print(type(command))
-        elif command.startswith('pwd'):
-            print(pwd(command))
-        elif command.startswith('cd'):
-            cd(command)
+
+        if ord(char) == 92:
+            if is_single_quoted:
+                string_builder += char
+            elif is_double_quoted:
+                if string[x + 1] in (chr(92), '$', '"'):
+                    string_builder += string[x + 1]
+                    is_escaped = True
+                else:
+                    string_builder += char
+            else:
+                string_builder += string[x + 1]
+                is_escaped = True
+            continue
+
+        if not any([is_single_quoted, is_double_quoted]):
+            if char == ' ':
+                result.append(string_builder)
+                string_builder = str()
+            else:
+                string_builder += char
         else:
-            commands = shlex.split(command, posix=True)
-            command_name = commands[0]
-            args = commands[1:]
-            executable_path = find_executable(command_name)
-            if executable_path:
-                try:
-                    command_name_only = os.path.basename(executable_path)
-                    result = subprocess.run(
-                        [command_name_only] + args, text=True
-                    )
-                except Exception as e:
-                    print(f"Error executing {command[0]}: {e}")
-            else:
-                print(f"{command_name}: command not found")
-        # input()
+            string_builder += char
+
+    result.append(string_builder)
+    while '' in result:
+        result.remove('')
+
+    return result if as_list else ' '.join(result)
 
 
-def display_matches(substitution, matches, longest_match_length):
-    print()
-    if matches:
-        print("  ".join(matches))
-    print("$ " + substitution, end="")
+def check_for_file_to_write(command):
+    write_list = ['>', '1>', '2>', '>>', '1>>', '2>>']
+    append = False
+    err_flag = False
 
+    # Determine if the command contains any redirection operator
+    for x, symbol in enumerate(command):
+        if symbol == '>' and x:
+            if command[x - 1] == '2':
+                err_flag = True
+                break
 
-def get_path_executables():
-    executables = []
-    path_dirs = os.environ.get("PATH", "").split(":")
-
-    for directory in path_dirs:
-        if not directory:
-            continue
-        try:
-            for item in os.listdir(directory):
-                full_path = os.path.join(directory, item)
-                if os.path.isfile(full_path) and os.access(full_path, os.X_OK):
-                    executables.append(item)
-        except OSError:
-            continue
-    return executables
-
-
-def completer(text, state):
-    builtins = ['echo', 'exit', 'type', 'pwd', 'cd']
-    all_commands = builtins + get_path_executables()
-    matches = [cmd + "" for cmd in all_commands if cmd.startswith(text)]
-    if len(matches) == 1:
-        return matches[state] + " " if state < len(matches) else sys.stdout.write("\a")
-    if matches[0] in builtins:
-        return matches[state] + " " if state < len(matches) else sys.stdout.write("\a")
-    return matches[state] if state < len(matches) else sys.stdout.write("\a")
-
-
-def cd(command):
-    command = command.split()
-    path = command[1]
-    if path == "~":
-        try:
-            os.chdir(os.environ["HOME"])
-        except OSError:
-            print(f"cd: {path}: No such file or directory")
+    if any(x in command for x in write_list):
+        # Handle redirection operators in order of specificity
+        if '2>>' in command:
+            io_splitter = command.split('2>>', 1)
+            write_command = io_splitter[0].strip()
+            output_file = io_splitter[1].strip()
+            append = True
+            err_flag = True
+        elif '2>' in command:
+            io_splitter = command.split('2>', 1)
+            write_command = io_splitter[0].strip()
+            output_file = io_splitter[1].strip()
+            append = False
+            err_flag = True
+        elif '1>>' in command:
+            io_splitter = command.split('1>>', 1)
+            write_command = io_splitter[0].strip()
+            output_file = io_splitter[1].strip()
+            append = True
+        elif '>>' in command:
+            io_splitter = command.split('>>', 1)
+            write_command = io_splitter[0].strip()
+            output_file = io_splitter[1].strip()
+            append = True
+        elif '1>' in command:
+            io_splitter = command.split('1>', 1)
+            write_command = io_splitter[0].strip()
+            output_file = io_splitter[1].strip()
+            append = False
+        else:
+            io_splitter = command.split('>', 1)
+            write_command = io_splitter[0].strip()
+            output_file = io_splitter[1].strip()
+            append = False
     else:
-        try:
-            os.chdir(path)
-        except OSError:
-            print(f"cd: {path}: No such file or directory")
+        return (command, None, False, False)
+
+    return (write_command, output_file, append, err_flag)
 
 
-def pwd(command):
-    full_path = os.path.abspath(command)
-    dir_name = os.path.dirname(full_path)
-    return dir_name
-
-
-def find_executable(command):
-    path_dirs = os.environ.get("PATH", "").split(":")
-    for directory in path_dirs:
-        possible_path = os.path.join(directory, command)
-        if os.path.isfile(possible_path) and os.access(possible_path, os.X_OK):
-            return possible_path
+def write_to(file, text, append=False):
+    filepath = file[::-1].split(chr(47), 1)[1][::-1]
+    file_name = file[::-1].split(chr(47), 1)[0][::-1]
+    os.chdir(filepath.strip())
+    open(file_name, 'a' if append else 'w').write(str(text))
     return None
 
 
-def echo(command):
-    string = command.replace('echo ', '')
-    if string.startswith("'") and string.endswith("'") and "\\" not in string:
-        string = string.replace("'", "")
-        print(string)
-    elif string.startswith('"') and string.endswith('"') and "\\" not in string:
-        string = string.replace(' "', '')
-        string = string.replace('"', '')
-        print(string)
-    elif "\\" in string:
-        if "\\" * 3 in string:
-            string = string.strip('"')
-            string = string.strip("'")
-        elif "\\" * 2 in string:
-            if string.startswith("'"):
-                string = string.strip("'")
+def execute_pipeline(commands):
+    n = len(commands)
+    pipes = []
+    for _ in range(n - 1):
+        pipes.append(os.pipe())
+
+    builtins = {
+        'exit', 'echo', 'type', 'pwd', 'cd', 'history'
+    }
+
+    pids = []
+    for i, cmd in enumerate(commands):
+        args = parser(cmd, as_list=True)
+        is_builtin = args[0] in builtins
+
+        if is_builtin and n == 1:
+            return  # Built-in single command already handled in main()
+
+        pid = os.fork()
+        if pid == 0:
+            if i > 0:
+                os.dup2(pipes[i - 1][0], 0)
+            if i < n - 1:
+                os.dup2(pipes[i][1], 1)
+            for r, w in pipes:
+                os.close(r)
+                os.close(w)
+
+            if is_builtin:
+                if args[0] == 'echo':
+                    print(' '.join(args[1:]))
+                elif args[0] == 'pwd':
+                    print(os.getcwd())
+                elif args[0] == 'type':
+                    target = args[1] if len(args) > 1 else ''
+                    if target in builtins:
+                        print(f'{target} is a shell builtin')
+                    elif PATH := shutil.which(target):
+                        print(f'{target} is {PATH}')
+                    else:
+                        print(f'{target}: not found')
+                os._exit(0)
             else:
-                string = string.replace('\\"', '"')
-                string = string.replace('\\' * 2, '\\')
-                string = string.strip('"')
+                os.execvp(args[0], args)
+                os._exit(1)
         else:
-            if string.startswith("'"):
-                string = string.strip("'")
-                string = string.replace('""', '"')
+            pids.append(pid)
+
+    for r, w in pipes:
+        os.close(r)
+        os.close(w)
+    for pid in pids:
+        os.waitpid(pid, 0)
+
+
+class Autocomplete:
+    def __init__(self, commands):
+        self.commands = commands
+        self.last_text = None
+        self.tab_count = 0
+
+    def readline_complete(self, text, state):
+        # Reset tab count if the text changes
+        if text != self.last_text:
+            self.tab_count = 0
+            self.last_text = text
+
+        results = [x for x in self.commands if x.startswith(text)]
+        if not results:
+            return None
+
+        if state == 0:
+            self.tab_count += 1
+
+        if len(results) == 1:
+            # Single match: complete with a space
+            self.tab_count = 0
+            return results[0] + ' '
+
+        # Compute longest common prefix
+        prefix = results[0]
+        for cmd in results[1:]:
+            for i, (c1, c2) in enumerate(zip(prefix, cmd)):
+                if c1 != c2:
+                    prefix = prefix[:i]
+                    break
             else:
-                string = string.replace('"', '')
-                string = string.replace('\\n', 'n')
-                string = string.strip('"')
-                string = string.replace('\\', '"')
-                string = string.replace('""', '"')
-                string = string.replace('" ', ' ')
-                string = string.replace('"\'"', '\'"')
-        print(string)
-    else:
-        new_string = re.sub(r"\s+", " ", string)
-        print(new_string)
+                if len(cmd) < len(prefix):
+                    prefix = cmd
+
+        # Check if prefix is a complete command
+        is_complete = any(cmd == prefix for cmd in results)
+
+        if self.tab_count == 1:
+            # First Tab: complete to longest common prefix
+            return prefix + (' ' if is_complete and len([x for x in self.commands if x == prefix]) == 1 else '')
+
+        if self.tab_count == 2:
+            # Second Tab: ring bell and list matches
+            print('\a', end='', flush=True)
+            print('\n' + '  '.join(results))
+            print(f'$ {text}', end='', flush=True)
+            return None
+
+        # Subsequent Tabs: continue listing matches
+        print('\n' + '  '.join(results))
+        print(f'$ {text}', end='', flush=True)
+        return None
 
 
-def type(command):
-    PATH = os.environ.get('PATH')
-    cmd_path = None
-    paths = PATH.split(':')
-    type_list = ['type', 'echo', 'exit', 'pwd', 'cd']
-    string = command.replace('type ', '')
+def main():
+    history_list = []
+    history_file = os.getenv('HISTFILE')
+    history_pointer = 0
+    flag_history_from_file = False
 
-    for path in paths:
-        if os.path.isfile(f'{path}/{string}'):
-            cmd_path = f'{string} is {path}/{string}'
+    if history_file and os.path.exists(history_file):
+        with open(history_file, 'r') as h:
+            history_list.extend([line.rstrip() for line in h if line.rstrip()])
+        history_pointer = len(history_list)
 
-    if string in type_list:
-        if string == 'cat':
-            message = f'{string} is {path}/{string}'
-        else:
-            message = f'{string} is a shell builtin'
-        return message
-    elif cmd_path:
-        return cmd_path
-    else:
-        message = f'{string}: not found'
-        return message
+    command_list = ['exit', 'echo', 'type', 'pwd', 'cd', 'history']
+    completer = Autocomplete(command_list)
+    completer.commands = copy(command_list)
+
+    dynamic_path = [f for f in subprocess.run('echo $PATH', shell=True, capture_output=True).stdout.decode().split(':')
+                    if f[:4] == '/tmp']
+    for folder in dynamic_path:
+        folder_list = subprocess.run(f'ls -1 {folder}', shell=True, capture_output=True).stdout.decode()
+        completer.commands.extend(folder_list.strip().split('\n'))
+
+    readline.clear_history()
+    readline.set_completer(completer.readline_complete)
+    readline.parse_and_bind('tab: complete')
+    readline.set_completer_delims('\t')
+
+    while True:
+        output_file = None
+        append = None
+        err_flag = None
+
+        command = input('$ ')
+        command_foo = copy(command)
+        command_full = parser(command).split(' ', 1)
+        identifier = command_full[0]
+        history_list.append(command_foo)
+
+        command, output_file, append, err_flag = check_for_file_to_write(command)
+
+        if '|' in command:
+            execute_pipeline([c.strip() for c in command.split('|')])
+            continue
+
+        if '2>>' in command_foo:
+            parts = command_foo.split('2>>')
+            cmd_part = parts[0].striprelli
+
+        if '1>>' in command_foo or ('>>' in command_foo and '1>>' not in command_foo and '2>>' not in command_foo):
+            if '1>>' in command_foo:
+                parts = command_foo.split('1>>')
+            else:
+                parts = command_foo.split('>>')
+            cmd_part = parts[0].strip()
+            file_part = parts[1].strip()
+            with open(file_part, 'a') as f:  # Open the file in append mode
+                subprocess.run(cmd_part, shell=True, stdout=f)  # Append output to the file
+            continue
+
+        match identifier:
+            case 'exit':
+                if history_file:
+                    with open(history_file, 'a') as h:
+                        for line in history_list[history_pointer:]:
+                            h.write(f'{line}\n')
+                exit(int(command_full[1]) if len(command_full) > 1 else 0)
+
+            case 'echo':
+                if output_file:
+                    if err_flag:
+                        try:
+                            open(output_file, 'r')
+                        except FileNotFoundError:
+                            write_to(output_file, '', append=append)
+                        finally:
+                            write_to(output_file, '', append=append)
+                            print(command_full[1])
+                    else:
+                        write_to(output_file, command_full[1] + '\n', append=append)
+                else:
+                    print(command_full[1])
+
+            case 'type':
+                if command_full[1].strip() in command_list:
+                    print(f'{command_full[1]} is a shell builtin')
+                elif PATH := shutil.which(command_full[1] if len(command_full) > 1 else ''):
+                    print(f'{command_full[1]} is {PATH}')
+                else:
+                    print(f'{command_full[1]}: not found')
+
+            case 'pwd':
+                print(os.getcwd())
+
+            case 'cd':
+                try:
+                    os.chdir(Path.home() if command_full[1] == '~' else command_full[1])
+                except:
+                    print(f'cd: {command_full[1]}: No such file or directory')
+
+            case 'history':
+                if len(command_full) == 2:
+                    if command_full[1].startswith('-a'):
+                        file = command_full[1][3:] if len(command_full[1]) > 2 else history_file
+                        if file:
+                            with open(file, 'a') as h:
+                                for line in history_list[history_pointer:]:
+                                    h.write(f'{line}\n')
+                            history_pointer = len(history_list)
+                        continue
+                    elif command_full[1].startswith('-w'):
+                        file = command_full[1][3:]
+                        if file:
+                            with open(file, 'w') as h:
+                                for line in history_list:
+                                    h.write(f'{line}\n')
+                            with open(file, 'a') as h:
+                                pass
+                        continue
+                    elif command_full[1].startswith('-r'):
+                        file = command_full[1][3:]
+                        if file and os.path.exists(file):
+                            with open(file, 'r') as h:
+                                history_list.extend([line.rstrip() for line in h if line.rstrip()])
+                        continue
+
+                curr_history_path = history_list
+                if len(command_full) == 2 and command_full[1].isdigit():
+                    limit = int(command_full[1])
+                    curr_history_path = history_list[-limit:]
+                    offset = len(history_list) - len(curr_history_path)
+                else:
+                    offset = 0
+                for x, line in enumerate(curr_history_path):
+                    print(f' {x + 1 + offset} {line}')
+
+            case _:  # default
+                if shutil.which(identifier if identifier else ''):
+                    subprocess.run(command_foo, shell=True)
+                else:
+                    print(f'{command}: command not found')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
