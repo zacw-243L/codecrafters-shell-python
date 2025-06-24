@@ -220,6 +220,15 @@ def main():
                     print(f'cd: {command_full[1]}: No such file or directory')
 
             case 'history':
+                if len(command_full) == 2 and command_full[1].startswith('-a'):
+                    file = command_full[1][3:] if len(command_full[1]) > 2 else history_file
+                    if file:
+                        with open(file, 'a') as h:
+                            for line in history_list[history_pointer:]:
+                                h.write(f'{line}\n')
+                        history_pointer = len(history_list)
+                    continue
+
                 curr_history_path = history_list
                 if len(command_full) == 2 and command_full[1].isdigit():
                     limit = int(command_full[1])
