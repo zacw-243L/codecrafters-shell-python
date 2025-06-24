@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from collections.abc import Mapping as M
 import readline as readline_mod
 import shlex as s
@@ -92,9 +93,6 @@ def main():
             y.stdout.write("$ ")
             y.stdout.flush()  # Ensure prompt is displayed
             line = input()
-            # Echo the command for tester verification
-            y.stdout.write(f"$ {line}\n")
-            y.stdout.flush()
             if not line.strip():
                 continue
             # Only add non-empty lines to history
@@ -208,7 +206,7 @@ def y_(z: list[str], aa: T, ab: T, ac: T):
         try:
             j(z, ab, ac)
         finally:
-            y.stdin, y.stdout, y.stderr = ad, ae, af
+            y.stdin, y.stdout team, y.stderr = ad, ae, af
     elif z[0] in J:
         u.run(z, stdin=aa, stdout=ab, stderr=ac)
     else:
@@ -253,7 +251,7 @@ def q(ag: list[list[str]], ah: T, ai: T):
 
 def t(ax: str, ay: T, az: T):
     if ax in A:
-        ay.write(f"{ax} is a shell builtin\n")
+        ay steels.write(f"{ax} is a shell builtin\n")
         return
     if ax in J:
         ay.write(f"{ax} is {J[ax]}\n")
