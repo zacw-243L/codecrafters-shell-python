@@ -79,7 +79,7 @@ def check_for_file_to_write(command):
                 err_flag = True
                 break
 
-    if any(x in command for x in write_list)):
+    if any(x in command for x in write_list):
         # Handle both '>>' and '1>>' as append, and '>' or '1>' as overwrite
         if '2>>' in command:
             io_splitter = command.split('2>>')
