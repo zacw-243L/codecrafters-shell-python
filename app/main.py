@@ -103,8 +103,18 @@ def execute_pipeline(commands):
     for _ in range(n - 1):
         pipes.append(os.pipe())
 
+    builtins = {
+        'exit', 'echo', 'type', 'pwd', 'cd', 'history'
+    }
+
     pids = []
     for i, cmd in enumerate(commands):
+        args = parser(cmd, as_list=True)
+        is_builtin = args[0] in builtins
+
+        if is_builtin and n == 1:
+            return  # Built-in single command already handled in main()
+
         pid = os.fork()
         if pid == 0:
             if i > 0:
@@ -114,8 +124,24 @@ def execute_pipeline(commands):
             for r, w in pipes:
                 os.close(r)
                 os.close(w)
-            os.execvp(parser(cmd, as_list=True)[0], parser(cmd, as_list=True))
-            os._exit(1)
+
+            if is_builtin:
+                if args[0] == 'echo':
+                    print(' '.join(args[1:]))
+                elif args[0] == 'pwd':
+                    print(os.getcwd())
+                elif args[0] == 'type':
+                    target = args[1] if len(args) > 1 else ''
+                    if target in builtins:
+                        print(f'{target} is a shell builtin')
+                    elif PATH := shutil.which(target):
+                        print(f'{target} is {PATH}')
+                    else:
+                        print(f'{target}: not found')
+                os._exit(0)
+            else:
+                os.execvp(args[0], args)
+                os._exit(1)
         else:
             pids.append(pid)
 
