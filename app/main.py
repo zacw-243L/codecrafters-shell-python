@@ -224,6 +224,7 @@ def main():
                 subprocess.run(cmd_part, shell=True, stdout=f)  # Append output to the file
             continue
 
+
         match identifier:
             case 'exit':
                 if history_file:
