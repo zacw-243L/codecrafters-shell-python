@@ -141,9 +141,9 @@ def execute_pipeline(commands):
     pids = []
     for i, cmd in enumerate(commands):
         args = parser(cmd, as_list=True)
-        is_builtin_2 = args[0] in builtins
+        is_builtin = args[0] in builtins
 
-        if is_builtin_2 and n == 1:
+        if is_builtin and n == 1:
             return  # Built-in single command already handled in main()
 
         pid = os.fork()
@@ -156,7 +156,7 @@ def execute_pipeline(commands):
                 os.close(r)
                 os.close(w)
 
-            if is_builtin_2:
+            if is_builtin:
                 if args[0] == 'echo':
                     print(' '.join(args[1:]))
                 elif args[0] == 'pwd':
@@ -187,10 +187,26 @@ class Autocomplete:
     def __init__(self, commands):
         self.commands = commands
 
-    def readline_complete(self, text, commands):
-        results = [x for x in self.commands if x.startswith(text)] + [None]
-        self.results = results
-        return results[0] + ' ' if len(results) == 2 else results[0]
+    def readline_complete(self, text, state):
+        results = [x for x in self.commands if x.startswith(text)]
+        if not results:
+            return None
+        if state == 0:  # First call for this text, compute the longest common prefix
+            # If only one match, return it with a space
+            if len(results) == 1:
+                return results[0] + ' '
+            # Find the longest common prefix
+            prefix = results[0]
+            for cmd in results[1:]:
+                for i, (c1, c2) in enumerate(zip(prefix, cmd)):
+                    if c1 != c2:
+                        prefix = prefix[:i]
+                        break
+                else:
+                    if len(cmd) < len(prefix):
+                        prefix = cmd
+            return prefix + (' ' if len([x for x in self.commands if x.startswith(prefix)]) == 1 else '')
+        return None
 
 
 def main():
@@ -254,7 +270,6 @@ def main():
             with open(file_part, 'a') as f:  # Open the file in append mode
                 subprocess.run(cmd_part, shell=True, stdout=f)  # Append output to the file
             continue
-
 
         match identifier:
             case 'exit':
