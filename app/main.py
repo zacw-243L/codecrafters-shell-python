@@ -220,8 +220,14 @@ def main():
 
             case 'history':
                 curr_history_path = history_list
+                if len(command_full) == 2 and command_full[1].isdigit():
+                    limit = int(command_full[1])
+                    curr_history_path = history_list[-limit:]
+                    offset = len(history_list) - len(curr_history_path)
+                else:
+                    offset = 0
                 for x, line in enumerate(curr_history_path):
-                    print(f' {x + 1} {line}')
+                    print(f' {x + 1 + offset} {line}')
 
             case _:  # default
                 if shutil.which(identifier if identifier else ''):
