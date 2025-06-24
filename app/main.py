@@ -221,8 +221,8 @@ class Autocomplete:
         # Check if prefix is a complete command
         is_complete = any(cmd == prefix for cmd in results)
 
-        if self.tab_count == 1 or is_complete:
-            # First Tab or complete prefix: complete to longest common prefix
+        if self.tab_count == 1:
+            # First Tab: complete to longest common prefix
             return prefix + (' ' if is_complete and len([x for x in self.commands if x == prefix]) == 1 else '')
 
         if self.tab_count == 2:
@@ -283,11 +283,7 @@ def main():
 
         if '2>>' in command_foo:
             parts = command_foo.split('2>>')
-            cmd_part = parts[0].strip()
-            file_part = parts[1].strip()
-            with open(file_part, 'a') as f:
-                subprocess.run(cmd_part, shell=True, stderr=f)
-            continue
+            cmd_part = parts[0].striprelli
 
         if '1>>' in command_foo or ('>>' in command_foo and '1>>' not in command_foo and '2>>' not in command_foo):
             if '1>>' in command_foo:
