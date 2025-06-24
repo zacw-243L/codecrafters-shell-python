@@ -186,16 +186,39 @@ def execute_pipeline(commands):
 class Autocomplete:
     def __init__(self, commands):
         self.commands = commands
+        self.last_text = None
+        self.tab_count = 0
 
     def readline_complete(self, text, state):
+        # Reset tab count if the text changes
+        if text != self.last_text:
+            self.tab_count = 0
+            self.last_text = text
+
         results = [x for x in self.commands if x.startswith(text)]
         if not results:
             return None
-        if state == 0:  # First call for this text, compute the longest common prefix
-            # If only one match, return it with a space
-            if len(results) == 1:
-                return results[0] + ' '
-            # Find the longest common prefix
+
+        self.tab_count += 1
+
+        if len(results) == 1:
+            # Single match: complete with a space
+            self.tab_count = 0  # Reset tab count
+            return results[0] + ' '
+
+        if self.tab_count == 1:
+            # First Tab: ring bell for multiple matches
+            print('\a', end='', flush=True)
+            return None
+
+        if self.tab_count == 2:
+            # Second Tab: print all matches and redisplay prompt
+            print('\n' + '  '.join(results))
+            print(f'$ {text}', end='', flush=True)
+            return None
+
+        # For partial completion (subsequent Tabs or single prefix match)
+        if state == 0:
             prefix = results[0]
             for cmd in results[1:]:
                 for i, (c1, c2) in enumerate(zip(prefix, cmd)):
@@ -206,6 +229,7 @@ class Autocomplete:
                     if len(cmd) < len(prefix):
                         prefix = cmd
             return prefix + (' ' if len([x for x in self.commands if x.startswith(prefix)]) == 1 else '')
+
         return None
 
 
@@ -270,6 +294,7 @@ def main():
             with open(file_part, 'a') as f:  # Open the file in append mode
                 subprocess.run(cmd_part, shell=True, stdout=f)  # Append output to the file
             continue
+
 
         match identifier:
             case 'exit':
