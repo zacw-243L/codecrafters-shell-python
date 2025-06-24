@@ -210,7 +210,18 @@ def main():
             cmd_part = parts[0].strip()
             file_part = parts[1].strip()
             with open(file_part, 'a') as f:
-                proc = subprocess.run(cmd_part, shell=True, stderr=f)
+                subprocess.run(cmd_part, shell=True, stderr=f)
+            continue
+
+        if '1>>' in command_foo or '>>' in command_foo:
+            if '1>>' in command_foo:
+                parts = command_foo.split('1>>')
+            else:
+                parts = command_foo.split('>>')
+            cmd_part = parts[0].strip()
+            file_part = parts[1].strip()
+            with open(file_part, 'a') as f:
+                subprocess.run(cmd_part, shell=True, stdout=f)
             continue
 
         match identifier:
