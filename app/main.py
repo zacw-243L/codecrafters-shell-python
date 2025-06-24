@@ -146,15 +146,17 @@ def run_pipeline(commands, output_file=None, append=False, err_flag=False):
     for proc in processes:
         proc.wait()
 
-    if output_file and not err_flag:
+    if output_file and not err_flag and stdout != sys.stdout:
         stdout.close()
-    if output_file and err_flag:
+    if output_file and err_flag and stderr != sys.stderr:
         stderr.close()
 
 
 def main():
     if os.getenv('HISTFILE'):
         history_list = [line.rstrip() for line in open(os.getenv('HISTFILE'), 'r').readlines()]
+        for line in history_list:
+            readline.add_history(line)
     else:
         history_list = []
     history_file = None
@@ -187,6 +189,7 @@ def main():
             if not command.strip():
                 continue
 
+            readline.add_history(command)
             history_list.append(command)
 
             if check_fork(command):
@@ -198,9 +201,9 @@ def main():
 
             command, output_file, append, err_flag = check_for_file_to_write(command)
             command_full = parser(command, as_list=True)
-            identifier = command_full[0]
+            identifier = command_full[0] if command_full else ''
 
-            if command[0] in ("'", '"'):
+            if command and command[0] in ("'", '"'):
                 command_full = parser(command, as_list=True)
                 command_full[0] = 'cat '
                 command = ' '.join(command_full)
@@ -215,7 +218,7 @@ def main():
                     exit(int(command_full[1]) if len(command_full) > 1 else 0)
 
                 case 'echo':
-                    output = command_full[1] if len(command_full) > 1 else ''
+                    output = ' '.join(command_full[1:]) if len(command_full) > 1 else ''
                     if output_file:
                         if err_flag:
                             print(output, file=sys.stderr)
@@ -269,6 +272,8 @@ def main():
                                 if os.path.exists(history_file):
                                     with open(history_file, 'r') as h:
                                         history_list.extend([l.rstrip() for l in h])
+                                        for line in history_list:
+                                            readline.add_history(line)
                             elif option == 'w':
                                 with open(history_file, 'w') as h:
                                     for line in history_list:
@@ -285,12 +290,14 @@ def main():
                                 print(f' {y + cut + 1} {line}')
 
                 case _:
-                    if identifier := shutil.which(identifier):
+                    if identifier in command_list:
+                        print(f"{identifier}: command not found")
+                    elif identifier := shutil.which(identifier):
                         proc = subprocess.run(command, shell=True, text=True,
                                              stdout=open(output_file, 'a' if append else 'w') if output_file and not err_flag else sys.stdout,
                                              stderr=open(output_file, 'a' if append else 'w') if output_file and err_flag else sys.stderr)
                     else:
-                        print(f'{command}: command not found')
+                        print(f"{command}: command not found")
 
         except KeyboardInterrupt:
             print('^C')
