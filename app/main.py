@@ -145,6 +145,7 @@ def main():
     if history_file and os.path.exists(history_file):
         with open(history_file, 'r') as h:
             history_list.extend([line.rstrip() for line in h if line.rstrip()])
+        history_pointer = len(history_list)
 
     command_list = ['exit', 'echo', 'type', 'pwd', 'cd', 'history']
     completer = Autocomplete(command_list)
@@ -182,7 +183,7 @@ def main():
             case 'exit':
                 if history_file:
                     with open(history_file, 'a') as h:
-                        for line in history_list[-(len(history_list) - history_pointer):]:
+                        for line in history_list[history_pointer:]:
                             h.write(f'{line}\n')
                 exit(int(command_full[1]) if len(command_full) > 1 else 0)
 
