@@ -213,7 +213,7 @@ def main():
                 subprocess.run(cmd_part, shell=True, stderr=f)
             continue
 
-        if '1>>' in command_foo or '>>' in command_foo:
+        if '1>>' in command_foo or ('>>' in command_foo and '1>>' not in command_foo and '2>>' not in command_foo):
             if '1>>' in command_foo:
                 parts = command_foo.split('1>>')
             else:
