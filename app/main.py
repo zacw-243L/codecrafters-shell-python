@@ -85,8 +85,10 @@ def main():
     load_histfile()
     while True:
         try:
-            # Use readline for input to enable history navigation
-            line = readline_mod.get_line_buffer() or input("$ ")
+            # Use input() with readline for history navigation
+            y.stdout.write("$ ")
+            y.stdout.flush()  # Ensure prompt is displayed
+            line = input()
             if not line.strip():
                 continue
             # Only add non-empty lines to history
