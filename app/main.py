@@ -61,6 +61,16 @@ def load_histfile():
         except Exception:
             pass
 
+def save_histfile():
+    histfile = o.getenv("HISTFILE")
+    if histfile:
+        try:
+            with open(histfile, "w") as f:
+                for cmd in HISTORY:
+                    f.write(cmd + "\n")
+        except Exception:
+            pass
+
 def main():
     global LAST_WRITTEN_INDEX
     load_histfile()
@@ -114,6 +124,7 @@ def j(k: list[str], l: T, m: T):
         case ["type", z_]:
             t(z_, l, m)
         case ["exit", "0"]:
+            save_histfile()
             y.exit(0)
         case ["pwd"]:
             l.write(f"{o.getcwd()}\n")
