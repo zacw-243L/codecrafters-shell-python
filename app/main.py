@@ -70,9 +70,10 @@ def parser(string, as_list=False):
 
 def check_for_file_to_write(command):
     write_list = ['>', '1>', '2>', '>>', '1>>', '2>>']
-    append = command.count('>>') > 0
+    append = False
     err_flag = False
 
+    # Determine if the command contains any redirection operator
     for x, symbol in enumerate(command):
         if symbol == '>' and x:
             if command[x - 1] == '2':
@@ -80,36 +81,36 @@ def check_for_file_to_write(command):
                 break
 
     if any(x in command for x in write_list):
-        # Handle both '>>' and '1>>' as append, and '>' or '1>' as overwrite
+        # Handle redirection operators in order of specificity
         if '2>>' in command:
-            io_splitter = command.split('2>>')
+            io_splitter = command.split('2>>', 1)
             write_command = io_splitter[0].strip()
             output_file = io_splitter[1].strip()
             append = True
             err_flag = True
         elif '2>' in command:
-            io_splitter = command.split('2>')
+            io_splitter = command.split('2>', 1)
             write_command = io_splitter[0].strip()
             output_file = io_splitter[1].strip()
             append = False
             err_flag = True
         elif '1>>' in command:
-            io_splitter = command.split('1>>')
+            io_splitter = command.split('1>>', 1)
             write_command = io_splitter[0].strip()
             output_file = io_splitter[1].strip()
             append = True
         elif '>>' in command:
-            io_splitter = command.split('>>')
+            io_splitter = command.split('>>', 1)
             write_command = io_splitter[0].strip()
             output_file = io_splitter[1].strip()
             append = True
         elif '1>' in command:
-            io_splitter = command.split('1>')
+            io_splitter = command.split('1>', 1)
             write_command = io_splitter[0].strip()
             output_file = io_splitter[1].strip()
             append = False
         else:
-            io_splitter = command.split('>')
+            io_splitter = command.split('>', 1)
             write_command = io_splitter[0].strip()
             output_file = io_splitter[1].strip()
             append = False
@@ -140,9 +141,9 @@ def execute_pipeline(commands):
     pids = []
     for i, cmd in enumerate(commands):
         args = parser(cmd, as_list=True)
-        is_builtin = args[0] in builtins
+        is_builtin_2 = args[0] in builtins
 
-        if is_builtin and n == 1:
+        if is_builtin_2 and n == 1:
             return  # Built-in single command already handled in main()
 
         pid = os.fork()
@@ -155,7 +156,7 @@ def execute_pipeline(commands):
                 os.close(r)
                 os.close(w)
 
-            if is_builtin:
+            if is_builtin_2:
                 if args[0] == 'echo':
                     print(' '.join(args[1:]))
                 elif args[0] == 'pwd':
@@ -186,10 +187,10 @@ class Autocomplete:
     def __init__(self, commands):
         self.commands = commands
 
-    def complete(self, text, symbol_iter):
+    def readline_complete(self, text, commands):
         results = [x for x in self.commands if x.startswith(text)] + [None]
         self.results = results
-        return results[symbol_iter] + ' ' if len(results) <= 2 else results[symbol_iter]
+        return results[0] + ' ' if len(results) == 2 else results[0]
 
 
 def main():
@@ -214,7 +215,7 @@ def main():
         completer.commands.extend(folder_list.strip().split('\n'))
 
     readline.clear_history()
-    readline.set_completer(completer.complete)
+    readline.set_completer(completer.readline_complete)
     readline.parse_and_bind('tab: complete')
     readline.set_completer_delims('\t')
 
