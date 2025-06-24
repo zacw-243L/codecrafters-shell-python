@@ -168,15 +168,15 @@ def main():
 
         command = input('$ ')
         command_foo = copy(command)
+        command_full = parser(command).split(' ', 1)
+        identifier = command_full[0]
         history_list.append(command_foo)
+
         command, output_file, append, err_flag = check_for_file_to_write(command)
 
         if '|' in command:
             execute_pipeline([c.strip() for c in command.split('|')])
             continue
-
-        command_full = parser(command).split(' ', 1)
-        identifier = command_full[0]
 
         match identifier:
             case 'exit':
@@ -219,42 +219,9 @@ def main():
                     print(f'cd: {command_full[1]}: No such file or directory')
 
             case 'history':
-                if history_file:
-                    with open(history_file, 'r') as hist_temp:
-                        curr_history_path = [l.rstrip() for l in hist_temp]
-                else:
-                    curr_history_path = history_list
-
-                if len(command_full) == 1:
-                    if flag_history_from_file:
-                        print(f' 1 history -r {history_file}')
-                    for x, line in enumerate(curr_history_path):
-                        print(f' {x + 1 + int(flag_history_from_file)} {line}')
-                    if flag_history_from_file:
-                        print(f' {x + 2} history')
-                else:
-                    if command_full[1][0] == '-':
-                        match command_full[1][1]:
-                            case 'r':
-                                history_file = command_full[1][3:]
-                                flag_history_from_file = True
-                            case 'w':
-                                history_file = command_full[1][3:]
-                                with open(history_file, 'w') as h:
-                                    for line in history_list:
-                                        h.write(f'{line}\n')
-                            case 'a':
-                                history_file = command_full[1][3:]
-                                with open(history_file, 'a') as h:
-                                    for x, line in enumerate(history_list):
-                                        if x >= history_pointer:
-                                            h.write(f'{line}\n')
-                                history_pointer = x + 1
-                    else:
-                        command_number = int(command_full[1])
-                        cut = len(history_list) - command_number
-                        for y, line in enumerate(history_list[cut:]):
-                            print(f' {y + 2 + command_number} {line}')
+                curr_history_path = history_list
+                for x, line in enumerate(curr_history_path):
+                    print(f' {x + 1} {line}')
 
             case _:  # default
                 if shutil.which(identifier if identifier else ''):
