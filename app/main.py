@@ -12,11 +12,27 @@ A: F[list[str]] = ["echo", "exit", "type", "pwd", "cd", "history"]
 HISTORY: list[str] = []
 LAST_WRITTEN_INDEX: int = 0
 
+
+def L(M_, N, O):
+    print()
+    if N:
+        print("  ".join(N))
+    print("$ " + M_, end="")
+
+
+def P(Q: str, R: int) -> str | None:
+    S = list(set([T for T in K if T.startswith(Q)]))
+    if len(S) == 1:
+        return S[R] + " " if R < len(S) else None
+    return S[R] if R < len(S) else None
+
+
 readline_mod.parse_and_bind("tab: complete")
 readline_mod.parse_and_bind("set editing-mode emacs")
 
 readline_mod.set_completer(P)
 readline_mod.set_completion_display_matches_hook(L)
+
 
 def B(C: str, D: dict[str, p.Path]) -> None:
     E = p.Path(C)
@@ -25,26 +41,17 @@ def B(C: str, D: dict[str, p.Path]) -> None:
             if F_.is_file() and o.access(F_, o.X_OK):
                 D[F_.name] = F_
 
+
 def G() -> M[str, p.Path]:
     H: dict[str, p.Path] = {}
     for I_ in (o.getenv("PATH") or "").split(":"):
         B(I_, H)
     return H
 
+
 J: F[M[str, p.Path]] = {**G()}
 K: F[list[str]] = [*A, *J.keys()]
 
-def L(M_, N, O):
-    print()
-    if N:
-        print("  ".join(N))
-    print("$ " + M_, end="")
-
-def P(Q: str, R: int) -> str | None:
-    S = list(set([T for T in K if T.startswith(Q)]))
-    if len(S) == 1:
-        return S[R] + " " if R < len(S) else None
-    return S[R] if R < len(S) else None
 
 def load_histfile():
     global LAST_WRITTEN_INDEX
@@ -61,6 +68,7 @@ def load_histfile():
         except Exception:
             pass
 
+
 def save_histfile():
     histfile = o.getenv("HISTFILE")
     if histfile:
@@ -70,6 +78,7 @@ def save_histfile():
                     f.write(cmd + "\n")
         except Exception:
             pass
+
 
 def main():
     global LAST_WRITTEN_INDEX
@@ -115,6 +124,7 @@ def main():
         finally:
             if X: V.close()
             if Z: W.close()
+
 
 def j(k: list[str], l: T, m: T):
     global LAST_WRITTEN_INDEX
@@ -172,8 +182,10 @@ def j(k: list[str], l: T, m: T):
             else:
                 l.write(f"{' '.join(k)}: command not found\n")
 
+
 def w(x: str) -> bool:
     return x in A
+
 
 def y_(z: list[str], aa: T, ab: T, ac: T):
     if not z: return
@@ -188,6 +200,7 @@ def y_(z: list[str], aa: T, ab: T, ac: T):
         u.run(z, stdin=aa, stdout=ab, stderr=ac)
     else:
         ac.write(f"{z[0]}: command not found\n")
+
 
 def q(ag: list[list[str]], ah: T, ai: T):
     aj = []
@@ -224,6 +237,7 @@ def q(ag: list[list[str]], ah: T, ai: T):
     for aw in aj:
         aw.wait()
 
+
 def t(ax: str, ay: T, az: T):
     if ax in A:
         ay.write(f"{ax} is a shell builtin\n")
@@ -232,6 +246,7 @@ def t(ax: str, ay: T, az: T):
         ay.write(f"{ax} is {J[ax]}\n")
         return
     ay.write(f"{ax}: not found\n")
+
 
 def v(ba: str, bb: T, bc: T) -> None:
     if ba.startswith("~"):
@@ -242,6 +257,7 @@ def v(ba: str, bb: T, bc: T) -> None:
         bb.write(f"cd: {ba}: No such file or directory\n")
         return
     o.chdir(be)
+
 
 if __name__ == "__main__":
     main()
