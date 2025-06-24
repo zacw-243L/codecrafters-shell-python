@@ -205,6 +205,14 @@ def main():
             execute_pipeline([c.strip() for c in command.split('|')])
             continue
 
+        if '2>>' in command_foo:
+            parts = command_foo.split('2>>')
+            cmd_part = parts[0].strip()
+            file_part = parts[1].strip()
+            with open(file_part, 'a') as f:
+                proc = subprocess.run(cmd_part, shell=True, stderr=f)
+            continue
+
         match identifier:
             case 'exit':
                 if history_file:
