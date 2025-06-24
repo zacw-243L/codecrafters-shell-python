@@ -106,11 +106,11 @@ def j(k: list[str], l: T, m: T):
         case ["history", "-r", file]:
             try:
                 with open(file, "r") as f:
-                    for line in f:
-                        line = line.rstrip("\n")
-                        if line:
-                            HISTORY.append(line)
-                            r.add_history(line)
+                    for hist_line in f:
+                        hist_line = hist_line.rstrip("\\n")
+                        if hist_line:
+                            HISTORY.append(hist_line)
+                            r.add_history(hist_line)
             except Exception as e:
                 m.write(f"history -r: {e}\n")
         case [q_, *r]:
