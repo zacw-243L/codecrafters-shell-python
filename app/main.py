@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from collections.abc import Mapping as M
-import readline as r
+import readline as readline_mod
 import shlex as s
 import subprocess as u
 import sys as y
@@ -41,9 +41,9 @@ def P(Q: str, R: int) -> str | None:
         return S[R] + " " if R < len(S) else None
     return S[R] if R < len(S) else None
 
-r.set_completion_display_matches_hook(L)
-r.parse_and_bind("tab: complete")
-r.set_completer(P)
+readline_mod.set_completion_display_matches_hook(L)
+readline_mod.parse_and_bind("tab: complete")
+readline_mod.set_completer(P)
 
 def main():
     while True:
@@ -55,7 +55,7 @@ def main():
         if line.strip() == "":
             continue
         HISTORY.append(line)
-        r.add_history(line)
+        readline_mod.add_history(line)
         U = s.split(line)
         V = y.stdout
         W = y.stderr
@@ -107,15 +107,15 @@ def j(k: list[str], l: T, m: T):
             try:
                 with open(file, "r") as f:
                     for hist_line in f:
-                        hist_line = hist_line.rstrip("\\n")
+                        hist_line = hist_line.rstrip("\n")
                         if hist_line:
                             HISTORY.append(hist_line)
-                            r.add_history(hist_line)
+                            readline_mod.add_history(hist_line)
             except Exception as e:
                 m.write(f"history -r: {e}\n")
-        case [q_, *r]:
+        case [q_, *r_]:
             if q_ in J:
-                s_ = u.Popen([q_, *r], stdout=l, stderr=m)
+                s_ = u.Popen([q_, *r_], stdout=l, stderr=m)
                 s_.wait()
             else:
                 l.write(f"{' '.join(k)}: command not found\n")
