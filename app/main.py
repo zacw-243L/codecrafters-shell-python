@@ -12,6 +12,7 @@ from io import StringIO as I
 
 A: F[list[str]] = ["echo", "exit", "type", "pwd", "cd", "history"]
 HISTORY: list[str] = []
+LAST_WRITTEN_INDEX: int = 0
 
 def B(C: str, D: dict[str, p.Path]) -> None:
     E = p.Path(C)
@@ -46,6 +47,7 @@ readline_mod.parse_and_bind("tab: complete")
 readline_mod.set_completer(P)
 
 def main():
+    global LAST_WRITTEN_INDEX
     while True:
         y.stdout.write("$ ")
         try:
@@ -89,6 +91,7 @@ def main():
             if Z: W.close()
 
 def j(k: list[str], l: T, m: T):
+    global LAST_WRITTEN_INDEX
     match k:
         case ["echo", *n]:
             l.write(" ".join(n) + "\n")
@@ -111,6 +114,7 @@ def j(k: list[str], l: T, m: T):
                         if hist_line:
                             HISTORY.append(hist_line)
                             readline_mod.add_history(hist_line)
+                LAST_WRITTEN_INDEX = len(HISTORY)
             except Exception as e:
                 m.write(f"history -r: {e}\n")
         case ["history", "-w", file]:
@@ -118,8 +122,17 @@ def j(k: list[str], l: T, m: T):
                 with open(file, "w") as f:
                     for cmd in HISTORY:
                         f.write(cmd + "\n")
+                LAST_WRITTEN_INDEX = len(HISTORY)
             except Exception as e:
                 m.write(f"history -w: {e}\n")
+        case ["history", "-a", file]:
+            try:
+                with open(file, "a") as f:
+                    for cmd in HISTORY[LAST_WRITTEN_INDEX:]:
+                        f.write(cmd + "\n")
+                LAST_WRITTEN_INDEX = len(HISTORY)
+            except Exception as e:
+                m.write(f"history -a: {e}\n")
         case [q_, *r_]:
             if q_ in J:
                 s_ = u.Popen([q_, *r_], stdout=l, stderr=m)
