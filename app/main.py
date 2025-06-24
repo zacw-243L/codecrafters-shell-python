@@ -14,8 +14,9 @@ LAST_WRITTEN_INDEX: int = 0
 
 readline_mod.parse_and_bind("tab: complete")
 readline_mod.parse_and_bind("set editing-mode emacs")
-# readline_mod.parse_and_bind(r"\e[A: history-search-backward")
-# readline_mod.parse_and_bind(r"\e[B: history-search-forward")
+
+readline_mod.set_completer(P)
+readline_mod.set_completion_display_matches_hook(L)
 
 def B(C: str, D: dict[str, p.Path]) -> None:
     E = p.Path(C)
@@ -44,9 +45,6 @@ def P(Q: str, R: int) -> str | None:
     if len(S) == 1:
         return S[R] + " " if R < len(S) else None
     return S[R] if R < len(S) else None
-
-readline_mod.set_completion_display_matches_hook(L)
-readline_mod.set_completer(P)
 
 def load_histfile():
     global LAST_WRITTEN_INDEX
@@ -80,16 +78,12 @@ def main():
         y.stdout.write("$ ")
         try:
             line = input()
-            if line.strip() == "":
-                continue
-            readline_mod.add_history(line)  # ← move before `HISTORY.append`
-            HISTORY.append(line)
         except EOFError:
             break
         if line.strip() == "":
             continue
-        HISTORY.append(line)
         readline_mod.add_history(line)
+        HISTORY.append(line)
         U = s.split(line)
         V = y.stdout
         W = y.stderr
