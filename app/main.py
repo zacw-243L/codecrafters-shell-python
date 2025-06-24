@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from collections.abc import Mapping as M
 import readline as readline_mod
 import shlex as s
@@ -13,6 +11,11 @@ from io import StringIO as I
 A: F[list[str]] = ["echo", "exit", "type", "pwd", "cd", "history"]
 HISTORY: list[str] = []
 LAST_WRITTEN_INDEX: int = 0
+
+readline_mod.parse_and_bind("tab: complete")
+readline_mod.parse_and_bind("set editing-mode emacs")
+readline_mod.parse_and_bind("\e[A: history-search-backward")
+readline_mod.parse_and_bind("\e[B: history-search-forward")
 
 def B(C: str, D: dict[str, p.Path]) -> None:
     E = p.Path(C)
@@ -43,7 +46,6 @@ def P(Q: str, R: int) -> str | None:
     return S[R] if R < len(S) else None
 
 readline_mod.set_completion_display_matches_hook(L)
-readline_mod.parse_and_bind("tab: complete")
 readline_mod.set_completer(P)
 
 def load_histfile():
