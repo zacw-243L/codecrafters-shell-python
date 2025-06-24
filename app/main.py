@@ -14,8 +14,8 @@ LAST_WRITTEN_INDEX: int = 0
 
 readline_mod.parse_and_bind("tab: complete")
 readline_mod.parse_and_bind("set editing-mode emacs")
-readline_mod.parse_and_bind(r"\e[A: history-search-backward")
-readline_mod.parse_and_bind(r"\e[B: history-search-forward")
+# readline_mod.parse_and_bind(r"\e[A: history-search-backward")
+# readline_mod.parse_and_bind(r"\e[B: history-search-forward")
 
 def B(C: str, D: dict[str, p.Path]) -> None:
     E = p.Path(C)
