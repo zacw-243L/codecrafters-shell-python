@@ -133,6 +133,11 @@ def j(k: list[str], l: T, m: T):
         case ["history"]:
             for idx, cmd in enumerate(HISTORY, start=1):
                 l.write(f"    {idx}  {cmd}\n")
+        case ["history", count_str] if count_str.isdigit():
+            count = int(count_str)
+            start = max(len(HISTORY) - count, 0)
+            for idx, cmd in enumerate(HISTORY[start:], start=start + 1):
+                l.write(f"    {idx}  {cmd}\n")
         case ["history", "-r", file]:
             try:
                 with open(file, "r") as f:
