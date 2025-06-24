@@ -235,7 +235,8 @@ def main():
                             with open(file, 'w') as h:
                                 for line in history_list:
                                     h.write(f'{line}\n')
-                            h.write('\n')
+                            with open(file, 'a') as h:
+                                h.write('\n')
                         continue
 
                 curr_history_path = history_list
