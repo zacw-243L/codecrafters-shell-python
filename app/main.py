@@ -235,9 +235,14 @@ def main():
                             with open(file, 'w') as h:
                                 for line in history_list:
                                     h.write(f'{line}\n')
-                            # Only one trailing newline
                             with open(file, 'a') as h:
                                 pass
+                        continue
+                    elif command_full[1].startswith('-r'):
+                        file = command_full[1][3:]
+                        if file and os.path.exists(file):
+                            with open(file, 'r') as h:
+                                history_list.extend([line.rstrip() for line in h if line.rstrip()])
                         continue
 
                 curr_history_path = history_list
