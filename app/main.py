@@ -70,7 +70,7 @@ def parser(string, as_list=False):
 
 def check_for_file_to_write(command):
     write_list = ['>', '1>', '2>', '>>', '1>>', '2>>']
-    append = bool(command.count('>') - 1)
+    append = command.count('>>') > 0
     err_flag = False
 
     for x, symbol in enumerate(command):
@@ -79,14 +79,44 @@ def check_for_file_to_write(command):
                 err_flag = True
                 break
 
-    if any(x in command for x in write_list):
-        io_splitter = command.replace('1>', '>').replace('2>', '>').replace('>>', '>').split('>')
-        write_command = io_splitter[0]
-        output_file = io_splitter[1]
+    if any(x in command for x in write_list)):
+        # Handle both '>>' and '1>>' as append, and '>' or '1>' as overwrite
+        if '2>>' in command:
+            io_splitter = command.split('2>>')
+            write_command = io_splitter[0].strip()
+            output_file = io_splitter[1].strip()
+            append = True
+            err_flag = True
+        elif '2>' in command:
+            io_splitter = command.split('2>')
+            write_command = io_splitter[0].strip()
+            output_file = io_splitter[1].strip()
+            append = False
+            err_flag = True
+        elif '1>>' in command:
+            io_splitter = command.split('1>>')
+            write_command = io_splitter[0].strip()
+            output_file = io_splitter[1].strip()
+            append = True
+        elif '>>' in command:
+            io_splitter = command.split('>>')
+            write_command = io_splitter[0].strip()
+            output_file = io_splitter[1].strip()
+            append = True
+        elif '1>' in command:
+            io_splitter = command.split('1>')
+            write_command = io_splitter[0].strip()
+            output_file = io_splitter[1].strip()
+            append = False
+        else:
+            io_splitter = command.split('>')
+            write_command = io_splitter[0].strip()
+            output_file = io_splitter[1].strip()
+            append = False
     else:
         return (command, None, False, False)
 
-    return (write_command, output_file.strip(), append, err_flag)
+    return (write_command, output_file, append, err_flag)
 
 
 def write_to(file, text, append=False):
