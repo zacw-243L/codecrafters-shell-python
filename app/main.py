@@ -80,6 +80,10 @@ def main():
         y.stdout.write("$ ")
         try:
             line = input()
+            if line.strip() == "":
+                continue
+            readline_mod.add_history(line)  # ← move before `HISTORY.append`
+            HISTORY.append(line)
         except EOFError:
             break
         if line.strip() == "":
