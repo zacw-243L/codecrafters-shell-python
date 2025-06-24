@@ -27,10 +27,12 @@ def P(Q: str, R: int) -> str | None:
     return S[R] if R < len(S) else None
 
 
-readline_mod.clear_history()
+# Initialize readline but don't clear history yet
 readline_mod.set_completer(P)
 readline_mod.set_completion_display_matches_hook(L)
 readline_mod.parse_and_bind("tab: complete")
+readline_mod.parse_and_bind("up: previous-history")  # Explicitly bind up-arrow
+readline_mod.parse_and_bind("down: next-history")   # Explicitly bind down-arrow
 readline_mod.set_completer_delims("\t")
 
 
@@ -56,6 +58,7 @@ K: F[list[str]] = [*A, *J.keys()]
 def load_histfile():
     global LAST_WRITTEN_INDEX
     histfile = o.getenv("HISTFILE")
+    readline_mod.clear_history()  # Clear history only when loading from file
     if histfile and p.Path(histfile).exists():
         try:
             with open(histfile, "r") as f:
@@ -181,7 +184,7 @@ def j(k: list[str], l: T, m: T):
                         f.write(cmd + "\n")
                 LAST_WRITTEN_INDEX = len(HISTORY)
             except Exception as e:
-                m.write(f"history -a: {e}\n")
+                m.write(f"history -w: {e}\n")
         case [q_, *r_]:
             if q_ in J:
                 s_ = u.Popen([q_, *r_], stdout=l, stderr=m)
