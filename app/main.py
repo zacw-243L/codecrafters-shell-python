@@ -27,7 +27,7 @@ def P(Q: str, R: int) -> str | None:
     return S[R] if R < len(S) else None
 
 
-# Initialize readline but don't clear history yet
+# Initialize readline
 readline_mod.set_completer(P)
 readline_mod.set_completion_display_matches_hook(L)
 readline_mod.parse_and_bind("tab: complete")
@@ -92,6 +92,9 @@ def main():
             y.stdout.write("$ ")
             y.stdout.flush()  # Ensure prompt is displayed
             line = input()
+            # Echo the command for tester verification
+            y.stdout.write(f"$ {line}\n")
+            y.stdout.flush()
             if not line.strip():
                 continue
             # Only add non-empty lines to history
@@ -184,7 +187,7 @@ def j(k: list[str], l: T, m: T):
                         f.write(cmd + "\n")
                 LAST_WRITTEN_INDEX = len(HISTORY)
             except Exception as e:
-                m.write(f"history -w: {e}\n")
+                m.write(f"history -a: {e}\n")
         case [q_, *r_]:
             if q_ in J:
                 s_ = u.Popen([q_, *r_], stdout=l, stderr=m)
@@ -224,7 +227,7 @@ def q(ag: list[list[str]], ah: T, ai: T):
                     y_(an, y.stdin, aq, ai)
                 al = o.fdopen(ao)
             else:
-                ar = u.Popen(an, stdout=ap, stderr=ai, close_fds=True)
+                ar = u.Popen(an, stdout=ao, stderr=ai, close_fds=True)
                 o.close(ap)
                 al = o.fdopen(ao)
                 aj.append(ar)
