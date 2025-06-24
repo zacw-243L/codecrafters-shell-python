@@ -6,6 +6,7 @@ from pathlib import Path
 from copy import copy
 import readline
 
+
 def parser(string, as_list=False):
     string_builder = str()
     result = []
@@ -66,6 +67,7 @@ def parser(string, as_list=False):
 
     return result if as_list else ' '.join(result)
 
+
 def check_for_file_to_write(command):
     write_list = ['>', '1>', '2>', '>>', '1>>', '2>>']
     append = bool(command.count('>') - 1)
@@ -86,12 +88,14 @@ def check_for_file_to_write(command):
 
     return (write_command, output_file.strip(), append, err_flag)
 
+
 def write_to(file, text, append=False):
     filepath = file[::-1].split(chr(47), 1)[1][::-1]
     file_name = file[::-1].split(chr(47), 1)[0][::-1]
     os.chdir(filepath.strip())
     open(file_name, 'a' if append else 'w').write(str(text))
     return None
+
 
 def execute_pipeline(commands):
     n = len(commands)
@@ -121,6 +125,7 @@ def execute_pipeline(commands):
     for pid in pids:
         os.waitpid(pid, 0)
 
+
 class Autocomplete:
     def __init__(self, commands):
         self.commands = commands
@@ -130,17 +135,23 @@ class Autocomplete:
         self.results = results
         return results[symbol_iter] + ' ' if len(results) <= 2 else results[symbol_iter]
 
+
 def main():
     history_list = []
-    history_file = None
+    history_file = os.getenv('HISTFILE')
     history_pointer = 0
     flag_history_from_file = False
+
+    if history_file and os.path.exists(history_file):
+        with open(history_file, 'r') as h:
+            history_list.extend([line.rstrip() for line in h])
 
     command_list = ['exit', 'echo', 'type', 'pwd', 'cd', 'history']
     completer = Autocomplete(command_list)
     completer.commands = copy(command_list)
 
-    dynamic_path = [f for f in subprocess.run('echo $PATH', shell=True, capture_output=True).stdout.decode().split(':') if f[:4] == '/tmp']
+    dynamic_path = [f for f in subprocess.run('echo $PATH', shell=True, capture_output=True).stdout.decode().split(':')
+                    if f[:4] == '/tmp']
     for folder in dynamic_path:
         folder_list = subprocess.run(f'ls -1 {folder}', shell=True, capture_output=True).stdout.decode()
         completer.commands.extend(folder_list.strip().split('\n'))
@@ -169,8 +180,8 @@ def main():
 
         match identifier:
             case 'exit':
-                if os.getenv('HISTFILE'):
-                    with open(os.getenv('HISTFILE'), 'w') as h:
+                if history_file:
+                    with open(history_file, 'a') as h:
                         for line in history_list:
                             h.write(f'{line}\n')
                 exit(int(command_full[1]) if len(command_full) > 1 else 0)
@@ -250,6 +261,7 @@ def main():
                     subprocess.run(command_foo, shell=True)
                 else:
                     print(f'{command}: command not found')
+
 
 if __name__ == '__main__':
     main()
