@@ -1,263 +1,232 @@
-from collections.abc import Mapping as M
-import readline as readline_mod
-import shlex as s
-import subprocess as u
-import sys as y
-import pathlib as p
-import os as o
-from typing import Final as F, TextIO as T
-from io import StringIO as I
-
-A: F[list[str]] = ["echo", "exit", "type", "pwd", "cd", "history"]
-HISTORY: list[str] = []
-LAST_WRITTEN_INDEX: int = 0
+import sys
+import os
+import shutil
+import subprocess
+from pathlib import Path
+from copy import copy
+import readline
+import io
 
 
-def L(M_, N, O):
-    print()
-    if N:
-        print("  ".join(N))
-    print("$ " + M_, end="")
+def parser(string, as_list=False):
+    string_builder = str()
+    result = []
+
+    is_single_quoted = False
+    is_double_quoted = False
+    is_escaped = False
+
+    for x, char in enumerate(string):
+
+        if is_escaped:
+            is_escaped = False
+            continue
+
+        if char == "'":
+            if is_double_quoted:
+                string_builder += char
+            elif is_single_quoted:
+                is_single_quoted = False
+            else:
+                is_single_quoted = True
+            continue
+
+        if char == '"':
+            if is_single_quoted:
+                string_builder += char
+            elif is_double_quoted:
+                is_double_quoted = False
+            else:
+                is_double_quoted = True
+            continue
+
+        if ord(char) == 92:
+            if is_single_quoted:
+                string_builder += char
+            elif is_double_quoted:
+                if string[x + 1] in (chr(92), '$', '"'):
+                    string_builder += string[x + 1]
+                    is_escaped = True
+                else:
+                    string_builder += char
+            else:
+                string_builder += string[x + 1]
+                is_escaped = True
+            continue
+
+        if not any([is_single_quoted, is_double_quoted]):
+
+            if char == ' ':
+                result.append(string_builder)
+                string_builder = str()
+            else:
+                string_builder += char
+        else:
+            string_builder += char
+
+    result.append(string_builder)
+
+    while '' in result:
+        result.remove('')
+
+    if as_list:
+        return result
+    else:
+        return ' '.join(result)
 
 
-def P(Q: str, R: int) -> str | None:
-    S = list(set([T for T in K if T.startswith(Q)]))
-    if len(S) == 1:
-        return S[R] + " " if R < len(S) else None
-    return S[R] if R < len(S) else None
+def check_for_file_to_write(command):
+    write_list = ['>', '1>', '2>', '>>', '1>>', '2>>']
+
+    append = bool(command.count('>') - 1)
+
+    for x, symbol in enumerate(command):
+        if symbol == '>' and x:
+            if command[x - 1] == '2':
+                err_flag = True
+                break
+            else:
+                err_flag = False
+
+    if any([x for x in command if x in write_list]):
+        io_splitter = command.replace('1>', '>').replace('2>', '>').replace('>>', '>').split('>')
+        write_command = io_splitter[0]
+        output_file = io_splitter[1]
+    else:
+        return (command, None, False, False)
+
+    return (write_command, output_file.strip(), append, err_flag)
 
 
-readline_mod.clear_history()
-readline_mod.set_completer(P)
-readline_mod.set_completion_display_matches_hook(L)
-readline_mod.parse_and_bind("tab: complete")
-readline_mod.set_completer_delims("\t")
+def write_to(file, text, append=False):
+    filepath = file[::-1].split(chr(47), 1)[1][::-1]
+    file_name = file[::-1].split(chr(47), 1)[0][::-1]
+
+    os.chdir(filepath.strip())
+
+    open(file_name, 'a' if append else 'w').write(str(text))
+
+    return None
 
 
-def B(C: str, D: dict[str, p.Path]) -> None:
-    E = p.Path(C)
-    if E.exists() and E.is_dir():
-        for F_ in E.iterdir():
-            if F_.is_file() and o.access(F_, o.X_OK):
-                D[F_.name] = F_
+class Autocomplete:
+    def __init__(self, commands):
+        self.commands = commands
 
-
-def G() -> M[str, p.Path]:
-    H: dict[str, p.Path] = {}
-    for I_ in (o.getenv("PATH") or "").split(":"):
-        B(I_, H)
-    return H
-
-
-J: F[M[str, p.Path]] = {**G()}
-K: F[list[str]] = [*A, *J.keys()]
-
-
-def load_histfile():
-    global LAST_WRITTEN_INDEX
-    histfile = o.getenv("HISTFILE")
-    if histfile and p.Path(histfile).exists():
-        try:
-            with open(histfile, "r") as f:
-                for line in f:
-                    line = line.rstrip("\n")
-                    if line:
-                        HISTORY.append(line)
-                        readline_mod.add_history(line)
-            LAST_WRITTEN_INDEX = len(HISTORY)
-        except Exception:
-            pass
-
-
-def save_histfile():
-    histfile = o.getenv("HISTFILE")
-    if histfile:
-        try:
-            with open(histfile, "w") as f:
-                for cmd in HISTORY:
-                    f.write(cmd + "\n")
-        except Exception:
-            pass
+    def complete(self, text, symbol_iter):
+        results = [x for x in self.commands if x.startswith(text)] + [None]
+        self.results = results
+        return results[symbol_iter]
 
 
 def main():
-    global LAST_WRITTEN_INDEX
-    load_histfile()
+    history_list = []
+    history_pointer = None
+
+    command_list = ['exit', 'echo', 'type', 'pwd', 'cd', 'history']
+    string_agg = ''
+
+    completer = Autocomplete(command_list)
+    completer.commands = copy(command_list)
+    dynamic_path = [folder for folder in
+                    subprocess.run('echo $PATH', shell=True, capture_output=True).stdout.decode().split(':') if
+                    folder[:4] == '/tmp']
+    dynamic_commands = []
+    for folder in dynamic_path:
+        folder_list = subprocess.run(f'ls -1 {folder}', shell=True, capture_output=True).stdout.decode()
+        dynamic_commands.append(''.join(folder_list).strip())
+    dynamic_commands = sorted(dynamic_commands)
+    completer.commands.extend(dynamic_commands)
+
+    readline.clear_history()
+    readline.set_completer(completer.complete)
+    readline.parse_and_bind('tab: complete')  # history-preserve-point on')
+    readline.set_completer_delims('\t')
+    # readline.set_auto_history(False)
+
+    # print('$ ', end = '')
     while True:
-        y.stdout.write("$ ")
-        try:
-            line = input()
-        except EOFError:
-            break
-        if line.strip() == "":
-            continue
-        readline_mod.add_history(line)
-        HISTORY.append(line)
-        U = s.split(line)
-        V = y.stdout
-        W = y.stderr
-        X = False
-        Z = False
-        try:
-            for a, b, c, d in [(">", "w", "V", "X"), ("1>", "w", "V", "X"), ("2>", "w", "W", "Z"),
-                               (">>", "a", "V", "X"), ("1>>", "a", "V", "X"), ("2>>", "a", "W", "Z")]:
-                if a in U:
-                    e = U.index(a)
-                    f = open(U[e + 1], b)
-                    if c == "V":
-                        V, X = f, True
+
+        output_file = None
+        append = None
+        err_flag = None
+
+        command = input('$ ')
+
+        command_foo = copy(command)
+        history_list.append(command_foo)
+
+        command, output_file, append, err_flag = check_for_file_to_write(command)
+
+        command_full = parser(command).split(' ', 1)
+        identifier = command_full[0]
+
+        if command[0] in ("'", '"'):
+            command_full = parser(command, as_list=True)
+            command_full[0] = 'cat '
+            command = ''.join(command_full)
+            identifier = 'cat'
+
+        match identifier:
+
+            case 'exit':
+                exit(int(command_full[1]))
+
+            case 'echo':
+                if output_file:
+                    if err_flag:
+                        try:
+                            open(output_file, 'r')
+                        except FileNotFoundError:
+                            write_to(output_file, '', append=append)
+                            # print(command_full[1])
+                        finally:
+                            write_to(output_file, '', append=append)
+                            print(command_full[1])
                     else:
-                        W, Z = f, True
-                    U = U[:e] + U[e + 2:]
-            if "|" in U:
-                g, h = [], []
-                for i in U:
-                    if i == "|":
-                        g.append(h)
-                        h = []
-                    else:
-                        h.append(i)
-                g.append(h)
-                q(g, V, W)
-            else:
-                j(U, V, W)
-        finally:
-            if X: V.close()
-            if Z: W.close()
+                        write_to(output_file, command_full[1] + '\n', append=append)
+                else:
+                    print(command_full[1])
+
+            case 'type':
+                if command_full[1].strip() in command_list:
+                    # if command_full[1].strip() in command_list[:-1]:
+                    print(f'{command_full[1]} is a shell builtin')
+                elif PATH := shutil.which(command_full[1] if command_full[1] else ''):
+                    print(f'{command_full[1]} is {PATH}')
+                else:
+                    print(f'{command_full[1]}: not found')
+
+            case 'pwd':
+                print(os.getcwd())
+
+            case 'cd':
+                if command_full[1] == '~':
+                    os.chdir(Path.home())
+                else:
+                    try:
+                        os.chdir(command_full[1])
+                    except FileNotFoundError:
+                        print(f'cd: {command_full[1]}: No such file or directory')
+
+            case 'history':
+                if len(command_full) == 1:
+                    for x, line in enumerate(history_list):
+                        print(f' {x + 1} {line}')
+                else:
+                    command_number = int(command_full[1])
+                    cut = len(history_list) - command_number
+                    for y, line in enumerate(history_list[cut:]):
+                        print(f' {y + 2 + command_number} {line}')
+
+            case default:
+                if identifier := shutil.which(identifier if identifier else ''):
+                    subprocess.run(command_foo, shell=True)
+                else:
+                    print(f'{command}: command not found')
+
+        # print('$ ', end = '')
 
 
-def j(k: list[str], l: T, m: T):
-    global LAST_WRITTEN_INDEX
-    match k:
-        case ["echo", *n]:
-            l.write(" ".join(n) + "\n")
-        case ["type", z_]:
-            t(z_, l, m)
-        case ["exit", "0"]:
-            save_histfile()
-            y.exit(0)
-        case ["pwd"]:
-            l.write(f"{o.getcwd()}\n")
-        case ["cd", p_]:
-            v(p_, l, m)
-        case ["history"]:
-            for idx, cmd in enumerate(HISTORY, start=1):
-                l.write(f"    {idx}  {cmd}\n")
-        case ["history", count_str] if count_str.isdigit():
-            count = int(count_str)
-            start = max(len(HISTORY) - count, 0)
-            for idx, cmd in enumerate(HISTORY[start:], start=start + 1):
-                l.write(f"    {idx}  {cmd}\n")
-        case ["history", "-r", file]:
-            try:
-                with open(file, "r") as f:
-                    for hist_line in f:
-                        hist_line = hist_line.rstrip("\n")
-                        if hist_line:
-                            HISTORY.append(hist_line)
-                            readline_mod.add_history(hist_line)
-                LAST_WRITTEN_INDEX = len(HISTORY)
-            except Exception as e:
-                m.write(f"history -r: {e}\n")
-        case ["history", "-w", file]:
-            try:
-                with open(file, "w") as f:
-                    for cmd in HISTORY:
-                        f.write(cmd + "\n")
-                LAST_WRITTEN_INDEX = len(HISTORY)
-            except Exception as e:
-                m.write(f"history -w: {e}\n")
-        case ["history", "-a", file]:
-            try:
-                with open(file, "a") as f:
-                    for cmd in HISTORY[LAST_WRITTEN_INDEX:]:
-                        f.write(cmd + "\n")
-                LAST_WRITTEN_INDEX = len(HISTORY)
-            except Exception as e:
-                m.write(f"history -a: {e}\n")
-        case [q_, *r_]:
-            if q_ in J:
-                s_ = u.Popen([q_, *r_], stdout=l, stderr=m)
-                s_.wait()
-            else:
-                l.write(f"{' '.join(k)}: command not found\n")
-
-
-def w(x: str) -> bool:
-    return x in A
-
-
-def y_(z: list[str], aa: T, ab: T, ac: T):
-    if not z: return
-    if w(z[0]):
-        ad, ae, af = y.stdin, y.stdout, y.stderr
-        y.stdin, y.stdout, y.stderr = aa, ab, ac
-        try:
-            j(z, ab, ac)
-        finally:
-            y.stdin, y.stdout, y.stderr = ad, ae, af
-    elif z[0] in J:
-        u.run(z, stdin=aa, stdout=ab, stderr=ac)
-    else:
-        ac.write(f"{z[0]}: command not found\n")
-
-
-def q(ag: list[list[str]], ah: T, ai: T):
-    aj = []
-    ak = len(ag)
-    al = None
-    for am, an in enumerate(ag):
-        if am == 0:
-            ao, ap = o.pipe()
-            if w(an[0]):
-                with o.fdopen(ap, 'w') as aq:
-                    y_(an, y.stdin, aq, ai)
-                al = o.fdopen(ao)
-            else:
-                ar = u.Popen(an, stdout=ap, stderr=ai, close_fds=True)
-                o.close(ap)
-                al = o.fdopen(ao)
-                aj.append(ar)
-        elif am == ak - 1:
-            y_(an, al, ah, ai)
-            if al: al.close()
-        else:
-            as_, at = o.pipe()
-            if w(an[0]):
-                with o.fdopen(at, 'w') as au:
-                    y_(an, al, au, ai)
-                if al: al.close()
-                al = o.fdopen(as_)
-            else:
-                av = u.Popen(an, stdin=al, stdout=at, stderr=ai, close_fds=True)
-                if al: al.close()
-                o.close(at)
-                al = o.fdopen(as_)
-                aj.append(av)
-    for aw in aj:
-        aw.wait()
-
-
-def t(ax: str, ay: T, az: T):
-    if ax in A:
-        ay.write(f"{ax} is a shell builtin\n")
-        return
-    if ax in J:
-        ay.write(f"{ax} is {J[ax]}\n")
-        return
-    ay.write(f"{ax}: not found\n")
-
-
-def v(ba: str, bb: T, bc: T) -> None:
-    if ba.startswith("~"):
-        bd = o.getenv("HOME") or "/root"
-        ba = ba.replace("~", bd)
-    be = p.Path(ba)
-    if not be.exists():
-        bb.write(f"cd: {ba}: No such file or directory\n")
-        return
-    o.chdir(be)
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
