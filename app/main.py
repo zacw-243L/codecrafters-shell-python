@@ -290,12 +290,12 @@ def main():
                                 print(f' {y + cut + 1} {line}')
 
                 case _:
-                    if identifier in command_list:
-                        print(f"{identifier}: command not found")
-                    elif identifier := shutil.which(identifier):
-                        proc = subprocess.run(command, shell=True, text=True,
+                    if identifier and (identifier := shutil.which(identifier)):
+                        proc = subprocess.run([identifier] + command_full[1:], shell=False, text=True,
                                              stdout=open(output_file, 'a' if append else 'w') if output_file and not err_flag else sys.stdout,
                                              stderr=open(output_file, 'a' if append else 'w') if output_file and err_flag else sys.stderr)
+                        if proc.returncode != 0:
+                            print(f"{identifier}: command failed", file=sys.stderr)
                     else:
                         print(f"{command}: command not found")
 
