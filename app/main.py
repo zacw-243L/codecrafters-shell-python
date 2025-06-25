@@ -233,6 +233,14 @@ class Autocomplete:
         return None
 
 
+def strip_redirection(arg):
+    # Remove any redirection from the output for echo
+    for redir in ['2>>', '2>', '1>>', '1>', '>>', '>']:
+        if redir in arg:
+            return arg.split(redir, 1)[0].rstrip()
+    return arg
+
+
 def main():
     history_list = []
     history_file = os.getenv('HISTFILE')
@@ -286,7 +294,10 @@ def main():
             if identifier in ['exit', 'echo', 'type', 'pwd', 'cd', 'history']:
                 if identifier == 'echo':
                     with open(file_part, 'a') as f:
-                        print(command_full[1])  # Output to stdout
+                        pass  # echo never writes to stderr
+                    # Print only the message, not the redirection
+                    if len(command_full) > 1:
+                        print(strip_redirection(command_full[1]))
                 continue
             else:
                 with open(file_part, 'a') as f:
@@ -300,7 +311,9 @@ def main():
             if identifier in ['exit', 'echo', 'type', 'pwd', 'cd', 'history']:
                 if identifier == 'echo':
                     with open(file_part, 'w') as f:
-                        print(command_full[1])  # Output to stdout
+                        pass  # echo never writes to stderr
+                    if len(command_full) > 1:
+                        print(strip_redirection(command_full[1]))
                 continue
             else:
                 with open(file_part, 'w') as f:
@@ -327,6 +340,10 @@ def main():
                 exit(int(command_full[1]) if len(command_full) > 1 else 0)
 
             case 'echo':
+                if len(command_full) > 1:
+                    clean_echo = strip_redirection(command_full[1])
+                else:
+                    clean_echo = ""
                 if output_file:
                     if err_flag:
                         try:
@@ -335,11 +352,11 @@ def main():
                             write_to(output_file, '', append=append)
                         finally:
                             write_to(output_file, '', append=append)
-                            print(command_full[1])
+                            print(clean_echo)
                     else:
-                        write_to(output_file, command_full[1] + '\n', append=append)
+                        write_to(output_file, clean_echo + '\n', append=append)
                 else:
-                    print(command_full[1])
+                    print(clean_echo)
 
             case 'type':
                 if command_full[1].strip() in command_list:
