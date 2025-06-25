@@ -192,40 +192,44 @@ class Autocomplete:
         self.last_prefix = None
 
     def readline_complete(self, text, state):
-        # Only increment tab_count on state==0 (first call for this text)
         if text != self.last_text:
             self.tab_count = 0
             self.last_text = text
             self.last_prefix = text
             self.suggestions = sorted([cmd for cmd in self.commands if cmd.startswith(text)])
 
-        # If no matches, do nothing
+        # No matches
         if not self.suggestions:
             return None
 
+        # Only one candidate: complete it
         if len(self.suggestions) == 1:
-            # Only one candidate, complete it
-            return self.suggestions[0] + ' '
+            if state == 0:
+                return self.suggestions[0] + ' '
+            else:
+                return None
 
         # Multiple matches
-        # This logic triggers only for the *first* word (command) in the line.
+        prefix = os.path.commonprefix(self.suggestions)
+        # If the prefix is longer than what the user typed, complete up to the prefix
+        if len(prefix) > len(text):
+            if state == 0:
+                return prefix
+            else:
+                return None
+
         if state == 0:
             self.tab_count += 1
-
             if self.tab_count == 1:
-                # First TAB: ring bell
                 sys.stdout.write('\a')
                 sys.stdout.flush()
                 return None
-
             if self.tab_count == 2:
-                # Second TAB: show all choices, 2 spaces apart, then print prompt and current input
                 sys.stdout.write('  '.join(self.suggestions) + '\n')
                 sys.stdout.write(f'$ {text}')
                 sys.stdout.flush()
                 return None
 
-        # For subsequent TABs, let readline cycle through suggestions
         idx = state
         if idx < len(self.suggestions):
             return self.suggestions[idx] + ' '
