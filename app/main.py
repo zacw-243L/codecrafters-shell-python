@@ -1,5 +1,3 @@
-#qddaw
-
 import sys
 import os
 import shutil
@@ -282,8 +280,32 @@ def main():
             continue
 
         if '2>>' in command_foo:
-            parts = command_foo.split('2>>')
+            parts = command_foo.split('2>>', 1)
             cmd_part = parts[0].strip()
+            file_part = parts[1].strip()
+            if identifier in ['exit', 'echo', 'type', 'pwd', 'cd', 'history']:
+                if identifier == 'echo':
+                    with open(file_part, 'a') as f:
+                        print(command_full[1])  # Output to stdout
+                continue
+            else:
+                with open(file_part, 'a') as f:
+                    subprocess.run(cmd_part, shell=True, stderr=f)
+                continue
+
+        if '2>' in command_foo:
+            parts = command_foo.split('2>', 1)
+            cmd_part = parts[0].strip()
+            file_part = parts[1].strip()
+            if identifier in ['exit', 'echo', 'type', 'pwd', 'cd', 'history']:
+                if identifier == 'echo':
+                    with open(file_part, 'w') as f:
+                        print(command_full[1])  # Output to stdout
+                continue
+            else:
+                with open(file_part, 'w') as f:
+                    subprocess.run(cmd_part, shell=True, stderr=f)
+                continue
 
         if '1>>' in command_foo or ('>>' in command_foo and '1>>' not in command_foo and '2>>' not in command_foo):
             if '1>>' in command_foo:
@@ -305,11 +327,6 @@ def main():
                 exit(int(command_full[1]) if len(command_full) > 1 else 0)
 
             case 'echo':
-                # Remove any redirection from the output for echo
-                echo_arg = command_full[1]
-                for redir in ['2>>', '2>', '1>>', '1>', '>>', '>']:
-                    if redir in echo_arg:
-                        echo_arg = echo_arg.split(redir, 1)[0].rstrip()
                 if output_file:
                     if err_flag:
                         try:
