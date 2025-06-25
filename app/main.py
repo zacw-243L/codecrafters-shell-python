@@ -213,8 +213,9 @@ class Autocomplete:
             return None
 
         if self.tab_count == 2 and state == 0:
+            # Print matches with exactly two spaces between
             print('\n' + '  '.join(self.suggestions))
-            print(f'$ {text}', end='', flush=True)
+            print(f'$ {self.last_text}', end='', flush=True)
             return None
 
         self.tab_count += 1
