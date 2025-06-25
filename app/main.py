@@ -194,7 +194,7 @@ class Autocomplete:
         if text != self.last_text:
             self.tab_count = 0
             self.last_text = text
-            self.suggestions = [cmd for cmd in self.commands if cmd.startswith(text)]
+            self.suggestions = sorted([cmd for cmd in self.commands if cmd.startswith(text)])
 
             if not self.suggestions:
                 return None
@@ -213,8 +213,8 @@ class Autocomplete:
             return None
 
         if self.tab_count == 2 and state == 0:
-            # Print matches with exactly two spaces between (remove padding issue)
-            print('' + '  '.join(self.suggestions), end='')
+            # Print matches with exactly two spaces between
+            print('\n' + '  '.join(self.suggestions))
             print(f'$ {text}', end='', flush=True)
             return None
 
@@ -369,3 +369,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    
