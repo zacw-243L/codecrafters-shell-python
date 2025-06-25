@@ -305,6 +305,11 @@ def main():
                 exit(int(command_full[1]) if len(command_full) > 1 else 0)
 
             case 'echo':
+                # Remove any redirection from the output for echo
+                echo_arg = command_full[1]
+                for redir in ['2>>', '2>', '1>>', '1>', '>>', '>']:
+                    if redir in echo_arg:
+                        echo_arg = echo_arg.split(redir, 1)[0].rstrip()
                 if output_file:
                     if err_flag:
                         try:
