@@ -214,7 +214,7 @@ class Autocomplete:
 
         if self.tab_count == 2 and state == 0:
             # Print matches with exactly two spaces between (remove padding issue)
-            print('\n' + '  '.join(self.suggestions))
+            print('' + '  '.join(self.suggestions), end='')
             print(f'$ {text}', end='', flush=True)
             return None
 
