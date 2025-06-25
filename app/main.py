@@ -124,7 +124,7 @@ def write_to(file, text, append=False):
     filepath = file[::-1].split(chr(47), 1)[1][::-1]
     file_name = file[::-1].split(chr(47), 1)[0][::-1]
     os.chdir(filepath.strip())
-    open(file_name, ' 'a' if append else 'w').write(str(text))
+    open(file_name, 'a' if append else 'w').write(str(text))
     return None
 
 
@@ -378,4 +378,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    
