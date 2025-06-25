@@ -278,7 +278,9 @@ def main():
         command = input('$ ')
         command_foo = copy(command)
         command_full = parser(command).split(' ', 1)
-        identifier = command_full[0]
+        # identifier = command_full[0]
+        args_list = parser(command, as_list=True)  # <- Properly parsed tokens
+        identifier = args_list[0] if args_list else ""
         history_list.append(command_foo)
 
         command, output_file, append, err_flag = check_for_file_to_write(command)
@@ -412,8 +414,13 @@ def main():
                     print(f' {x + 1 + offset} {line}')
 
             case _:  # default
+                # Use the parser to get the real executable name (quotes stripped)
                 if shutil.which(identifier if identifier else ''):
-                    subprocess.run(command_foo, shell=True)
+                    # Use the parsed argument list for exec
+                    try:
+                        subprocess.run(args_list)
+                    except Exception as e:
+                        print(e)
                 else:
                     print(f'{command}: command not found')
 
