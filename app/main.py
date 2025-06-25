@@ -245,7 +245,6 @@ def main():
     history_list = []
     history_file = os.getenv('HISTFILE')
     history_pointer = 0
-    flag_history_from_file = False
 
     if history_file and os.path.exists(history_file):
         with open(history_file, 'r') as h:
@@ -278,8 +277,7 @@ def main():
         command = input('$ ')
         command_foo = copy(command)
         command_full = parser(command).split(' ', 1)
-        # identifier = command_full[0]
-        args_list = parser(command, as_list=True)  # <- Properly parsed tokens
+        args_list = parser(command, as_list=True)  # Properly parsed tokens
         identifier = args_list[0] if args_list else ""
         history_list.append(command_foo)
 
@@ -289,6 +287,7 @@ def main():
             execute_pipeline([c.strip() for c in command.split('|')])
             continue
 
+        # 2>> and 2> redirection (stderr)
         if '2>>' in command_foo:
             parts = command_foo.split('2>>', 1)
             cmd_part = parts[0].strip()
@@ -297,7 +296,6 @@ def main():
                 if identifier == 'echo':
                     with open(file_part, 'a') as f:
                         pass  # echo never writes to stderr
-                    # Print only the message, not the redirection
                     if len(command_full) > 1:
                         print(strip_redirection(command_full[1]))
                 continue
@@ -322,6 +320,7 @@ def main():
                     subprocess.run(cmd_part, shell=True, stderr=f)
                 continue
 
+        # 1>> and >> (stdout append)
         if '1>>' in command_foo or ('>>' in command_foo and '1>>' not in command_foo and '2>>' not in command_foo):
             if '1>>' in command_foo:
                 parts = command_foo.split('1>>')
@@ -329,8 +328,20 @@ def main():
                 parts = command_foo.split('>>')
             cmd_part = parts[0].strip()
             file_part = parts[1].strip()
-            with open(file_part, 'a') as f:  # Open the file in append mode
-                subprocess.run(cmd_part, shell=True, stdout=f)  # Append output to the file
+            with open(file_part, 'a') as f:
+                subprocess.run(cmd_part, shell=True, stdout=f)
+            continue
+
+        # 1> and > (stdout overwrite)
+        if '1>' in command_foo or ('>' in command_foo and '1>' not in command_foo and '2>' not in command_foo):
+            if '1>' in command_foo:
+                parts = command_foo.split('1>')
+            else:
+                parts = command_foo.split('>')
+            cmd_part = parts[0].strip()
+            file_part = parts[1].strip()
+            with open(file_part, 'w') as f:
+                subprocess.run(cmd_part, shell=True, stdout=f)
             continue
 
         match identifier:
@@ -416,7 +427,6 @@ def main():
             case _:  # default
                 # Use the parser to get the real executable name (quotes stripped)
                 if shutil.which(identifier if identifier else ''):
-                    # Use the parsed argument list for exec
                     try:
                         subprocess.run(args_list)
                     except Exception as e:
