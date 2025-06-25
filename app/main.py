@@ -208,8 +208,7 @@ class Autocomplete:
         if len(self.suggestions) == 1:
             if state == 0:
                 return self.suggestions[0] + ' '
-            else:
-                return None
+            return None
 
         # Multiple matches
         prefix = os.path.commonprefix(self.suggestions)
@@ -217,11 +216,9 @@ class Autocomplete:
         if len(prefix) > len(text):
             if state == 0:
                 return prefix
-            else:
-                return None
+            return None
 
-        # If the prefix is NOT longer than text, and there are multiple matches,
-        # this is where we do the bell and the list printing (exactly as the test wants)
+        # Handle multiple matches for TAB presses
         if state == 0:
             self.tab_count += 1
             if self.tab_count == 1:
@@ -229,17 +226,12 @@ class Autocomplete:
                 sys.stdout.write('\a')
                 sys.stdout.flush()
                 return None
-            if self.tab_count == 2:
-                # Second TAB: print all matches, 2 spaces, then prompt and original input
-                sys.stdout.write('  '.join(self.suggestions) + '\n')
+            elif self.tab_count == 2:
+                # Second TAB: print matches on new line, then prompt
+                sys.stdout.write('\n' + '  '.join(self.suggestions) + '\n')
                 sys.stdout.write(f'$ {text}')
                 sys.stdout.flush()
                 return None
-
-        # After second TAB, fallback to cycling suggestions (optional, but safe)
-        idx = state
-        if idx < len(self.suggestions):
-            return None  # Don't auto-cycle, stick to list on second tab
         return None
 
 
