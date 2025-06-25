@@ -198,35 +198,29 @@ class Autocomplete:
         if not matches:
             return None
 
+        if len(matches) == 1:
+            self.tab_count = 0
+            return matches[0] + ' '
+
+        # Longest common prefix logic
+        prefix = matches[0]
+        for match in matches[1:]:
+            i = 0
+            while i < len(prefix) and i < len(match) and prefix[i] == match[i]:
+                i += 1
+            prefix = prefix[:i]
+
         if state == 0:
-            self.tab_count += 1
-
-            if len(matches) == 1:
-                readline.replace_line(matches[0] + ' ', 0)
-                readline.redisplay()
-                self.tab_count = 0
-                return matches[0] + ' '
-
-            # Find the longest common prefix
-            prefix = matches[0]
-            for match in matches[1:]:
-                i = 0
-                while i < len(prefix) and i < len(match) and prefix[i] == match[i]:
-                    i += 1
-                prefix = prefix[:i]
-
-            # Complete only to common prefix
+            # First Tab: return longest common prefix
             if prefix != text:
-                readline.replace_line(prefix, 0)
-                readline.redisplay()
                 return prefix
+            else:
+                if self.tab_count == 1:
+                    print('\a')  # ring bell
+                    print('\n' + '  '.join(matches))
+                    print(f'$ {text}', end='', flush=True)
 
-            if self.tab_count == 2:
-                print('\a')  # ring bell
-                print('\n' + '  '.join(matches))
-                print(f'$ {text}', end='', flush=True)
-                return None
-
+        self.tab_count += 1
         return None
 
 
@@ -254,7 +248,7 @@ def main():
     readline.clear_history()
     readline.set_completer(completer.readline_complete)
     readline.parse_and_bind('tab: complete')
-    readline.set_completer_delims('\t')
+    readline.set_completer_delims(' \t\n')
 
     while True:
         output_file = None
@@ -275,7 +269,7 @@ def main():
 
         if '2>>' in command_foo:
             parts = command_foo.split('2>>')
-            cmd_part = parts[0].striprelli
+            cmd_part = parts[0].strip()
 
         if '1>>' in command_foo or ('>>' in command_foo and '1>>' not in command_foo and '2>>' not in command_foo):
             if '1>>' in command_foo:
