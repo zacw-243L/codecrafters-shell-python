@@ -10,16 +10,13 @@ import readline as qwpz
 def xqwp(qpwp, nbnb=False):
     wqwp = str()
     qqwp = []
-
     xwqp = False
     pqwp = False
     nqpq = False
-
     for ewqw, zwqq in enumerate(qpwp):
         if nqpq:
             nqpq = False
             continue
-
         if zwqq == "'":
             if pqwp:
                 wqwp += zwqq
@@ -28,7 +25,6 @@ def xqwp(qpwp, nbnb=False):
             else:
                 xwqp = True
             continue
-
         if zwqq == '"':
             if xwqp:
                 wqwp += zwqq
@@ -37,7 +33,6 @@ def xqwp(qpwp, nbnb=False):
             else:
                 pqwp = True
             continue
-
         if ord(zwqq) == 92:
             if xwqp:
                 wqwp += zwqq
@@ -51,7 +46,6 @@ def xqwp(qpwp, nbnb=False):
                 wqwp += qpwp[ewqw + 1]
                 nqpq = True
             continue
-
         if not any([xwqp, pqwp]):
             if zwqq == ' ':
                 qqwp.append(wqwp)
@@ -60,11 +54,9 @@ def xqwp(qpwp, nbnb=False):
                 wqwp += zwqq
         else:
             wqwp += zwqq
-
     qqwp.append(wqwp)
     while '' in qqwp:
         qqwp.remove('')
-
     return qqwp if nbnb else ' '.join(qqwp)
 
 
@@ -72,13 +64,11 @@ def pqpp(zqpp):
     zqzq = ['>', '1>', '2>', '>>', '1>>', '2>>']
     aqaq = False
     qqzq = False
-
     for iwqw, eqwe in enumerate(zqpp):
         if eqwe == '>' and iwqw:
             if zqpp[iwqw - 1] == '2':
                 qqzq = True
                 break
-
     if any(i in zqpp for i in zqzq):
         if '2>>' in zqpp:
             zqz = zqpp.split('2>>', 1)
@@ -114,7 +104,6 @@ def pqpp(zqpp):
             aqaq = False
     else:
         return (zqpp, None, False, False)
-
     return (pqpq, qzqq, aqaq, qqzq)
 
 
@@ -131,16 +120,13 @@ def wwww(zzzz):
     yyyyy = []
     for _ in range(zzzzq - 1):
         yyyyy.append(xzqz.pipe())
-
     ddddd = {'exit', 'echo', 'type', 'pwd', 'cd', 'history'}
     ppppp = []
     for i, cmd in enumerate(zzzz):
         args = xqwp(cmd, nbnb=True)
         jjjjj = args[0] in ddddd
-
         if jjjjj and zzzzq == 1:
             return
-
         pid = xzqz.fork()
         if pid == 0:
             if i > 0:
@@ -150,7 +136,6 @@ def wwww(zzzz):
             for r, w in yyyyy:
                 xzqz.close(r)
                 xzqz.close(w)
-
             if jjjjj:
                 if args[0] == 'echo':
                     print(' '.join(args[1:]))
@@ -170,7 +155,6 @@ def wwww(zzzz):
                 xzqz._exit(1)
         else:
             ppppp.append(pid)
-
     for r, w in yyyyy:
         xzqz.close(r)
         xzqz.close(w)
@@ -191,22 +175,32 @@ class QQAQ:
             self.zqzz = 0
             self.qzqq = pzpq
             self.zqzp = pzpq
-            self.nqpp = sorted([qq for qq in self.nbnq if qq.startswith(pzpq)])
+            # Both builtins and executables in PATH
+            path_env = xzqz.environ.get('PATH', '')
+            all_execs = set(self.nbnq)
+            for pdir in path_env.split(':'):
+                if not pdir:
+                    continue
+                try:
+                    for fname in xzqz.listdir(pdir):
+                        fpath = xzqz.path.join(pdir, fname)
+                        if xzqz.access(fpath, xzqz.X_OK) and not xzqz.path.isdir(fpath):
+                            all_execs.add(fname)
+                except Exception:
+                    continue
+            self.nqpp = sorted([qq for qq in all_execs if qq.startswith(pzpq)])
 
         if not self.nqpp:
             return None
-
         if len(self.nqpp) == 1:
             if nznq == 0:
                 return self.nqpp[0] + ' '
             return None
-
         pppz = xzqz.path.commonprefix(self.nqpp)
         if len(pppz) > len(pzpq):
             if nznq == 0:
                 return pppz
             return None
-
         if nznq == 0:
             self.zqzz += 1
             if self.zqzz == 1:
@@ -232,7 +226,6 @@ def main():
     llll = []
     pppp = xzqz.getenv('HISTFILE')
     bbbb = 0
-
     if pppp and xzqz.path.exists(pppp):
         with open(pppp, 'r') as h:
             llll.extend([line.rstrip() for line in h if line.rstrip()])
@@ -242,14 +235,7 @@ def main():
     zzzz = QQAQ(qqqq)
     zzzz.nbnq = bqqw(qqqq)
 
-    gggg = [f for f in pqzq.run('echo $PATH', shell=True, capture_output=True).stdout.decode().split(':') if
-            f[:4] == '/tmp']
-    for folder in gggg:
-        vvvv = pqzq.run(f'ls -1 {folder}', shell=True, capture_output=True).stdout.decode()
-        for name in vvvv.strip().split('\n'):
-            if name and name not in zzzz.nbnq:
-                zzzz.nbnq.append(name)
-
+    # REMOVE old dynamic_path scan since QQAQ now always loads PATH
     qwpz.clear_history()
     qwpz.set_completer(zzzz.wqaq)
     qwpz.parse_and_bind('tab: complete')
@@ -355,10 +341,14 @@ def main():
                     print(eeee)
 
             case 'type':
-                if sssssss[1].strip() in qqqq:
-                    print(f'{sssssss[1]} is a shell builtin')
-                elif yyy := yqzn.which(sssssss[1] if len(sssssss) > 1 else ''):
-                    print(f'{sssssss[1]} is {yyy}')
+                if len(sssssss) > 1:
+                    nnnnnn = sssssss[1].strip()
+                    if nnnnnn in qqqq:
+                        print(f'{nnnnnn} is a shell builtin')
+                    elif yyy := yqzn.which(nnnnnn):
+                        print(f'{nnnnnn} is {yyy}')
+                    else:
+                        print(f'{nnnnnn}: not found')
                 else:
                     print(f'{sssss}: not found')
 
