@@ -124,7 +124,7 @@ def write_to(file, text, append=False):
     filepath = file[::-1].split(chr(47), 1)[1][::-1]
     file_name = file[::-1].split(chr(47), 1)[0][::-1]
     os.chdir(filepath.strip())
-    open(file_name, 'a' if append else 'w').write(str(text))
+    open(file_name, ' 'a' if append else 'w').write(str(text))
     return None
 
 
@@ -189,40 +189,46 @@ class Autocomplete:
         self.last_text = None
         self.tab_count = 0
         self.suggestions = []
+        self.last_prefix = None
 
     def readline_complete(self, text, state):
+        # Only increment tab_count on state==0 (first call for this text)
         if text != self.last_text:
             self.tab_count = 0
             self.last_text = text
+            self.last_prefix = text
             self.suggestions = sorted([cmd for cmd in self.commands if cmd.startswith(text)])
 
-            if not self.suggestions:
+        # If no matches, do nothing
+        if not self.suggestions:
+            return None
+
+        if len(self.suggestions) == 1:
+            # Only one candidate, complete it
+            return self.suggestions[0] + ' '
+
+        # Multiple matches
+        # This logic triggers only for the *first* word (command) in the line.
+        if state == 0:
+            self.tab_count += 1
+
+            if self.tab_count == 1:
+                # First TAB: ring bell
+                sys.stdout.write('\a')
+                sys.stdout.flush()
                 return None
 
-            if len(self.suggestions) == 1:
-                return self.suggestions[0] + ' '
+            if self.tab_count == 2:
+                # Second TAB: show all choices, 2 spaces apart, then print prompt and current input
+                sys.stdout.write('  '.join(self.suggestions) + '\n')
+                sys.stdout.write(f'$ {text}')
+                sys.stdout.flush()
+                return None
 
-            # Longest common prefix logic
-            prefix = os.path.commonprefix(self.suggestions)
-
-            if prefix and prefix != text:
-                return prefix
-
-        if self.tab_count == 1 and state == 0:
-            print('\a')  # Ring bell
-            return None
-
-        if self.tab_count == 2 and state == 0:
-            # Print matches with exactly two spaces between
-            print('  '.join(self.suggestions))
-            print(f'$ {text}', end='', flush=True)
-            return None
-
-        self.tab_count += 1
-
-        if state < len(self.suggestions):
-            return self.suggestions[state] + ' '
-
+        # For subsequent TABs, let readline cycle through suggestions
+        idx = state
+        if idx < len(self.suggestions):
+            return self.suggestions[idx] + ' '
         return None
 
 
@@ -241,11 +247,14 @@ def main():
     completer = Autocomplete(command_list)
     completer.commands = copy(command_list)
 
+    # Dynamically add executables from PATH (especially /tmp/...)
     dynamic_path = [f for f in subprocess.run('echo $PATH', shell=True, capture_output=True).stdout.decode().split(':')
                     if f[:4] == '/tmp']
     for folder in dynamic_path:
         folder_list = subprocess.run(f'ls -1 {folder}', shell=True, capture_output=True).stdout.decode()
-        completer.commands.extend(folder_list.strip().split('\n'))
+        for name in folder_list.strip().split('\n'):
+            if name and name not in completer.commands:
+                completer.commands.append(name)
 
     readline.clear_history()
     readline.set_completer(completer.readline_complete)
@@ -369,3 +378,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    
