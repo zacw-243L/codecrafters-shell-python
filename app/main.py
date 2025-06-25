@@ -208,10 +208,14 @@ class Autocomplete:
             if prefix and prefix != text:
                 return prefix
 
-            if self.tab_count == 1:
-                print('\a')
-                print('\n' + '  '.join(self.suggestions))
-                print(f'$ {text}', end='', flush=True)
+        if self.tab_count == 1 and state == 0:
+            print('\a')  # Ring bell
+            return None
+
+        if self.tab_count == 2 and state == 0:
+            print('\n' + '  '.join(self.suggestions))
+            print(f'$ {text}', end='', flush=True)
+            return None
 
         self.tab_count += 1
 
