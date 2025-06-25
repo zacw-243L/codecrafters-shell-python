@@ -199,7 +199,7 @@ class Autocomplete:
             if not self.suggestions:
                 return None
 
-           24            if len(self.suggestions) == 1:
+            if len(self.suggestions) == 1:
                 return self.suggestions[0] + ' '
 
             # Longest common prefix logic
@@ -369,4 +369,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    
