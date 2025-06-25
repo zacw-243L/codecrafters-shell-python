@@ -189,53 +189,46 @@ class Autocomplete:
         self.last_text = None
         self.tab_count = 0
 
-    def readline_complete(self, text, state):
-        # Reset tab count if the text changes
-        if text != self.last_text:
+
+def readline_complete(self, text, state):
+    if text != self.last_text:
+        self.tab_count = 0
+        self.last_text = text
+
+    matches = [cmd for cmd in self.commands if cmd.startswith(text)]
+    if not matches:
+        return None
+
+    if state == 0:
+        self.tab_count += 1
+
+        if len(matches) == 1:
+            readline.replace_line(matches[0] + ' ', 0)
+            readline.redisplay()
             self.tab_count = 0
-            self.last_text = text
+            return matches[0] + ' '
 
-        results = [x for x in self.commands if x.startswith(text)]
-        if not results:
-            return None
+        # Find the longest common prefix
+        prefix = matches[0]
+        for match in matches[1:]:
+            i = 0
+            while i < len(prefix) and i < len(match) and prefix[i] == match[i]:
+                i += 1
+            prefix = prefix[:i]
 
-        if state == 0:
-            self.tab_count += 1
-
-        if len(results) == 1:
-            # Single match: complete with a space
-            self.tab_count = 0
-            return results[0] + ' '
-
-        # Compute longest common prefix
-        prefix = results[0]
-        for cmd in results[1:]:
-            for i, (c1, c2) in enumerate(zip(prefix, cmd)):
-                if c1 != c2:
-                    prefix = prefix[:i]
-                    break
-            else:
-                if len(cmd) < len(prefix):
-                    prefix = cmd
-
-        # Check if prefix is a complete command
-        is_complete = any(cmd == prefix for cmd in results)
-
-        if self.tab_count == 1:
-            # First Tab: complete to longest common prefix
-            return prefix + (' ' if is_complete and len([x for x in self.commands if x == prefix]) == 1 else '')
+        # Complete only to common prefix
+        if prefix != text:
+            readline.replace_line(prefix, 0)
+            readline.redisplay()
+            return prefix
 
         if self.tab_count == 2:
-            # Second Tab: ring bell and list matches
-            print('\a', end='', flush=True)
-            print('\n' + '  '.join(results))
+            print('\a')  # ring bell
+            print('\n' + '  '.join(matches))
             print(f'$ {text}', end='', flush=True)
             return None
 
-        # Subsequent Tabs: continue listing matches
-        print('\n' + '  '.join(results))
-        print(f'$ {text}', end='', flush=True)
-        return None
+    return None
 
 
 def main():
@@ -381,5 +374,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-    #awdaw
