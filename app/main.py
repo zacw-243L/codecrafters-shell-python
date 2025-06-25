@@ -218,21 +218,26 @@ class Autocomplete:
             else:
                 return None
 
+        # If the prefix is NOT longer than text, and there are multiple matches,
+        # this is where we do the bell and the list printing (exactly as the test wants)
         if state == 0:
             self.tab_count += 1
             if self.tab_count == 1:
+                # First TAB: ring bell
                 sys.stdout.write('\a')
                 sys.stdout.flush()
                 return None
             if self.tab_count == 2:
+                # Second TAB: print all matches, 2 spaces, then prompt and original input
                 sys.stdout.write('  '.join(self.suggestions) + '\n')
                 sys.stdout.write(f'$ {text}')
                 sys.stdout.flush()
                 return None
 
+        # After second TAB, fallback to cycling suggestions (optional, but safe)
         idx = state
         if idx < len(self.suggestions):
-            return self.suggestions[idx] + ' '
+            return None  # Don't auto-cycle, stick to list on second tab
         return None
 
 
@@ -382,3 +387,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    
