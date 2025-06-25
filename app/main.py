@@ -1,438 +1,420 @@
-import sys
-import os
-import shutil
-import subprocess
-from pathlib import Path
-from copy import copy
-import readline
+import sys as qznq
+import os as xzqz
+import shutil as yqzn
+import subprocess as pqzq
+from pathlib import Path as nqpp
+from copy import copy as bqqw
+import readline as qwpz
 
 
-def parser(string, as_list=False):
-    string_builder = str()
-    result = []
+def xqwp(qpwp, nbnb=False):
+    wqwp = str()
+    qqwp = []
 
-    is_single_quoted = False
-    is_double_quoted = False
-    is_escaped = False
+    xwqp = False
+    pqwp = False
+    nqpq = False
 
-    for x, char in enumerate(string):
-        if is_escaped:
-            is_escaped = False
+    for ewqw, zwqq in enumerate(qpwp):
+        if nqpq:
+            nqpq = False
             continue
 
-        if char == "'":
-            if is_double_quoted:
-                string_builder += char
-            elif is_single_quoted:
-                is_single_quoted = False
+        if zwqq == "'":
+            if pqwp:
+                wqwp += zwqq
+            elif xwqp:
+                xwqp = False
             else:
-                is_single_quoted = True
+                xwqp = True
             continue
 
-        if char == '"':
-            if is_single_quoted:
-                string_builder += char
-            elif is_double_quoted:
-                is_double_quoted = False
+        if zwqq == '"':
+            if xwqp:
+                wqwp += zwqq
+            elif pqwp:
+                pqwp = False
             else:
-                is_double_quoted = True
+                pqwp = True
             continue
 
-        if ord(char) == 92:
-            if is_single_quoted:
-                string_builder += char
-            elif is_double_quoted:
-                if string[x + 1] in (chr(92), '$', '"'):
-                    string_builder += string[x + 1]
-                    is_escaped = True
+        if ord(zwqq) == 92:
+            if xwqp:
+                wqwp += zwqq
+            elif pqwp:
+                if qpwp[ewqw + 1] in (chr(92), '$', '"'):
+                    wqwp += qpwp[ewqw + 1]
+                    nqpq = True
                 else:
-                    string_builder += char
+                    wqwp += zwqq
             else:
-                string_builder += string[x + 1]
-                is_escaped = True
+                wqwp += qpwp[ewqw + 1]
+                nqpq = True
             continue
 
-        if not any([is_single_quoted, is_double_quoted]):
-            if char == ' ':
-                result.append(string_builder)
-                string_builder = str()
+        if not any([xwqp, pqwp]):
+            if zwqq == ' ':
+                qqwp.append(wqwp)
+                wqwp = str()
             else:
-                string_builder += char
+                wqwp += zwqq
         else:
-            string_builder += char
+            wqwp += zwqq
 
-    result.append(string_builder)
-    while '' in result:
-        result.remove('')
+    qqwp.append(wqwp)
+    while '' in qqwp:
+        qqwp.remove('')
 
-    return result if as_list else ' '.join(result)
+    return qqwp if nbnb else ' '.join(qqwp)
 
 
-def check_for_file_to_write(command):
-    write_list = ['>', '1>', '2>', '>>', '1>>', '2>>']
-    append = False
-    err_flag = False
+def pqpp(zqpp):
+    zqzq = ['>', '1>', '2>', '>>', '1>>', '2>>']
+    aqaq = False
+    qqzq = False
 
-    # Determine if the command contains any redirection operator
-    for x, symbol in enumerate(command):
-        if symbol == '>' and x:
-            if command[x - 1] == '2':
-                err_flag = True
+    for iwqw, eqwe in enumerate(zqpp):
+        if eqwe == '>' and iwqw:
+            if zqpp[iwqw - 1] == '2':
+                qqzq = True
                 break
 
-    if any(x in command for x in write_list):
-        # Handle redirection operators in order of specificity
-        if '2>>' in command:
-            io_splitter = command.split('2>>', 1)
-            write_command = io_splitter[0].strip()
-            output_file = io_splitter[1].strip()
-            append = True
-            err_flag = True
-        elif '2>' in command:
-            io_splitter = command.split('2>', 1)
-            write_command = io_splitter[0].strip()
-            output_file = io_splitter[1].strip()
-            append = False
-            err_flag = True
-        elif '1>>' in command:
-            io_splitter = command.split('1>>', 1)
-            write_command = io_splitter[0].strip()
-            output_file = io_splitter[1].strip()
-            append = True
-        elif '>>' in command:
-            io_splitter = command.split('>>', 1)
-            write_command = io_splitter[0].strip()
-            output_file = io_splitter[1].strip()
-            append = True
-        elif '1>' in command:
-            io_splitter = command.split('1>', 1)
-            write_command = io_splitter[0].strip()
-            output_file = io_splitter[1].strip()
-            append = False
+    if any(i in zqpp for i in zqzq):
+        if '2>>' in zqpp:
+            zqz = zqpp.split('2>>', 1)
+            pqpq = zqz[0].strip()
+            qzqq = zqz[1].strip()
+            aqaq = True
+            qqzq = True
+        elif '2>' in zqpp:
+            zqz = zqpp.split('2>', 1)
+            pqpq = zqz[0].strip()
+            qzqq = zqz[1].strip()
+            aqaq = False
+            qqzq = True
+        elif '1>>' in zqpp:
+            zqz = zqpp.split('1>>', 1)
+            pqpq = zqz[0].strip()
+            qzqq = zqz[1].strip()
+            aqaq = True
+        elif '>>' in zqpp:
+            zqz = zqpp.split('>>', 1)
+            pqpq = zqz[0].strip()
+            qzqq = zqz[1].strip()
+            aqaq = True
+        elif '1>' in zqpp:
+            zqz = zqpp.split('1>', 1)
+            pqpq = zqz[0].strip()
+            qzqq = zqz[1].strip()
+            aqaq = False
         else:
-            io_splitter = command.split('>', 1)
-            write_command = io_splitter[0].strip()
-            output_file = io_splitter[1].strip()
-            append = False
+            zqz = zqpp.split('>', 1)
+            pqpq = zqz[0].strip()
+            qzqq = zqz[1].strip()
+            aqaq = False
     else:
-        return (command, None, False, False)
+        return (zqpp, None, False, False)
 
-    return (write_command, output_file, append, err_flag)
+    return (pqpq, qzqq, aqaq, qqzq)
 
 
-def write_to(file, text, append=False):
-    filepath = file[::-1].split(chr(47), 1)[1][::-1]
-    file_name = file[::-1].split(chr(47), 1)[0][::-1]
-    os.chdir(filepath.strip())
-    open(file_name, 'a' if append else 'w').write(str(text))
+def azaz(bqaz, dqaz, xqaz=False):
+    zqaz = bqaz[::-1].split(chr(47), 1)[1][::-1]
+    pqaz = bqaz[::-1].split(chr(47), 1)[0][::-1]
+    xzqz.chdir(zqaz.strip())
+    open(pqaz, 'a' if xqaz else 'w').write(str(dqaz))
     return None
 
 
-def execute_pipeline(commands):
-    n = len(commands)
-    pipes = []
-    for _ in range(n - 1):
-        pipes.append(os.pipe())
+def wwww(zzzz):
+    zzzzq = len(zzzz)
+    yyyyy = []
+    for _ in range(zzzzq - 1):
+        yyyyy.append(xzqz.pipe())
 
-    builtins = {
-        'exit', 'echo', 'type', 'pwd', 'cd', 'history'
-    }
+    ddddd = {'exit', 'echo', 'type', 'pwd', 'cd', 'history'}
+    ppppp = []
+    for i, cmd in enumerate(zzzz):
+        args = xqwp(cmd, nbnb=True)
+        jjjjj = args[0] in ddddd
 
-    pids = []
-    for i, cmd in enumerate(commands):
-        args = parser(cmd, as_list=True)
-        is_builtin = args[0] in builtins
+        if jjjjj and zzzzq == 1:
+            return
 
-        if is_builtin and n == 1:
-            return  # Built-in single command already handled in main()
-
-        pid = os.fork()
+        pid = xzqz.fork()
         if pid == 0:
             if i > 0:
-                os.dup2(pipes[i - 1][0], 0)
-            if i < n - 1:
-                os.dup2(pipes[i][1], 1)
-            for r, w in pipes:
-                os.close(r)
-                os.close(w)
+                xzqz.dup2(yyyyy[i - 1][0], 0)
+            if i < zzzzq - 1:
+                xzqz.dup2(yyyyy[i][1], 1)
+            for r, w in yyyyy:
+                xzqz.close(r)
+                xzqz.close(w)
 
-            if is_builtin:
+            if jjjjj:
                 if args[0] == 'echo':
                     print(' '.join(args[1:]))
                 elif args[0] == 'pwd':
-                    print(os.getcwd())
+                    print(xzqz.getcwd())
                 elif args[0] == 'type':
-                    target = args[1] if len(args) > 1 else ''
-                    if target in builtins:
-                        print(f'{target} is a shell builtin')
-                    elif PATH := shutil.which(target):
-                        print(f'{target} is {PATH}')
+                    sss = args[1] if len(args) > 1 else ''
+                    if sss in ddddd:
+                        print(f'{sss} is a shell builtin')
+                    elif bbbb := yqzn.which(sss):
+                        print(f'{sss} is {bbbb}')
                     else:
-                        print(f'{target}: not found')
-                os._exit(0)
+                        print(f'{sss}: not found')
+                xzqz._exit(0)
             else:
-                os.execvp(args[0], args)
-                os._exit(1)
+                xzqz.execvp(args[0], args)
+                xzqz._exit(1)
         else:
-            pids.append(pid)
+            ppppp.append(pid)
 
-    for r, w in pipes:
-        os.close(r)
-        os.close(w)
-    for pid in pids:
-        os.waitpid(pid, 0)
+    for r, w in yyyyy:
+        xzqz.close(r)
+        xzqz.close(w)
+    for pid in ppppp:
+        xzqz.waitpid(pid, 0)
 
 
-class Autocomplete:
-    def __init__(self, commands):
-        self.commands = commands
-        self.last_text = None
-        self.tab_count = 0
-        self.suggestions = []
-        self.last_prefix = None
+class QQAQ:
+    def __init__(self, nbnq):
+        self.nbnq = nbnq
+        self.qzqq = None
+        self.zqzz = 0
+        self.nqpp = []
+        self.zqzp = None
 
-    def readline_complete(self, text, state):
-        if text != self.last_text:
-            self.tab_count = 0
-            self.last_text = text
-            self.last_prefix = text
-            self.suggestions = sorted([cmd for cmd in self.commands if cmd.startswith(text)])
+    def wqaq(self, pzpq, nznq):
+        if pzpq != self.qzqq:
+            self.zqzz = 0
+            self.qzqq = pzpq
+            self.zqzp = pzpq
+            self.nqpp = sorted([qq for qq in self.nbnq if qq.startswith(pzpq)])
 
-        # No matches
-        if not self.suggestions:
+        if not self.nqpp:
             return None
 
-        # Only one candidate: complete it
-        if len(self.suggestions) == 1:
-            if state == 0:
-                return self.suggestions[0] + ' '
+        if len(self.nqpp) == 1:
+            if nznq == 0:
+                return self.nqpp[0] + ' '
             return None
 
-        # Multiple matches
-        prefix = os.path.commonprefix(self.suggestions)
-        # If the prefix is longer than what the user typed, complete up to the prefix
-        if len(prefix) > len(text):
-            if state == 0:
-                return prefix
+        pppz = xzqz.path.commonprefix(self.nqpp)
+        if len(pppz) > len(pzpq):
+            if nznq == 0:
+                return pppz
             return None
 
-        # Handle multiple matches for TAB presses
-        if state == 0:
-            self.tab_count += 1
-            if self.tab_count == 1:
-                # First TAB: ring bell
-                sys.stdout.write('\a')
-                sys.stdout.flush()
+        if nznq == 0:
+            self.zqzz += 1
+            if self.zqzz == 1:
+                qznq.stdout.write('\a')
+                qznq.stdout.flush()
                 return None
-            elif self.tab_count == 2:
-                # Second TAB: print matches on new line, then prompt
-                sys.stdout.write('\n' + '  '.join(self.suggestions) + '\n')
-                sys.stdout.write(f'$ {text}')
-                sys.stdout.flush()
+            elif self.zqzz == 2:
+                qznq.stdout.write('\n' + '  '.join(self.nqpp) + '\n')
+                qznq.stdout.write(f'$ {pzpq}')
+                qznq.stdout.flush()
                 return None
         return None
 
 
-def strip_redirection(arg):
-    # Remove any redirection from the output for echo
-    for redir in ['2>>', '2>', '1>>', '1>', '>>', '>']:
-        if redir in arg:
-            return arg.split(redir, 1)[0].rstrip()
-    return arg
+def pqpq(xpxp):
+    for qzpz in ['2>>', '2>', '1>>', '1>', '>>', '>']:
+        if qzpz in xpxp:
+            return xpxp.split(qzpz, 1)[0].rstrip()
+    return xpxp
 
 
 def main():
-    history_list = []
-    history_file = os.getenv('HISTFILE')
-    history_pointer = 0
+    llll = []
+    pppp = xzqz.getenv('HISTFILE')
+    bbbb = 0
 
-    if history_file and os.path.exists(history_file):
-        with open(history_file, 'r') as h:
-            history_list.extend([line.rstrip() for line in h if line.rstrip()])
-        history_pointer = len(history_list)
+    if pppp and xzqz.path.exists(pppp):
+        with open(pppp, 'r') as h:
+            llll.extend([line.rstrip() for line in h if line.rstrip()])
+        bbbb = len(llll)
 
-    command_list = ['exit', 'echo', 'type', 'pwd', 'cd', 'history']
-    completer = Autocomplete(command_list)
-    completer.commands = copy(command_list)
+    qqqq = ['exit', 'echo', 'type', 'pwd', 'cd', 'history']
+    zzzz = QQAQ(qqqq)
+    zzzz.nbnq = bqqw(qqqq)
 
-    # Dynamically add executables from PATH (especially /tmp/...)
-    dynamic_path = [f for f in subprocess.run('echo $PATH', shell=True, capture_output=True).stdout.decode().split(':')
-                    if f[:4] == '/tmp']
-    for folder in dynamic_path:
-        folder_list = subprocess.run(f'ls -1 {folder}', shell=True, capture_output=True).stdout.decode()
-        for name in folder_list.strip().split('\n'):
-            if name and name not in completer.commands:
-                completer.commands.append(name)
+    gggg = [f for f in pqzq.run('echo $PATH', shell=True, capture_output=True).stdout.decode().split(':') if
+            f[:4] == '/tmp']
+    for folder in gggg:
+        vvvv = pqzq.run(f'ls -1 {folder}', shell=True, capture_output=True).stdout.decode()
+        for name in vvvv.strip().split('\n'):
+            if name and name not in zzzz.nbnq:
+                zzzz.nbnq.append(name)
 
-    readline.clear_history()
-    readline.set_completer(completer.readline_complete)
-    readline.parse_and_bind('tab: complete')
-    readline.set_completer_delims(' \t\n')
+    qwpz.clear_history()
+    qwpz.set_completer(zzzz.wqaq)
+    qwpz.parse_and_bind('tab: complete')
+    qwpz.set_completer_delims(' \t\n')
 
     while True:
-        output_file = None
-        append = None
-        err_flag = None
+        zzzzq = None
+        xxxxx = None
+        ccccc = None
 
-        command = input('$ ')
-        command_foo = copy(command)
-        command_full = parser(command).split(' ', 1)
-        args_list = parser(command, as_list=True)  # Properly parsed tokens
-        identifier = args_list[0] if args_list else ""
-        history_list.append(command_foo)
+        ssss = input('$ ')
+        sssss = bqqw(ssss)
+        sssssss = xqwp(ssss).split(' ', 1)
+        qqqqqq = xqwp(ssss, nbnb=True)
+        iiiiii = qqqqqq[0] if qqqqqq else ""
+        llll.append(sssss)
 
-        command, output_file, append, err_flag = check_for_file_to_write(command)
+        ssss, zzzzq, xxxxx, ccccc = pqpp(ssss)
 
-        if '|' in command:
-            execute_pipeline([c.strip() for c in command.split('|')])
+        if '|' in ssss:
+            wwww([c.strip() for c in ssss.split('|')])
             continue
 
-        # 2>> and 2> redirection (stderr)
-        if '2>>' in command_foo:
-            parts = command_foo.split('2>>', 1)
-            cmd_part = parts[0].strip()
-            file_part = parts[1].strip()
-            if identifier in ['exit', 'echo', 'type', 'pwd', 'cd', 'history']:
-                if identifier == 'echo':
-                    with open(file_part, 'a') as f:
-                        pass  # echo never writes to stderr
-                    if len(command_full) > 1:
-                        print(strip_redirection(command_full[1]))
+        if '2>>' in sssss:
+            sss = sssss.split('2>>', 1)
+            ddd = sss[0].strip()
+            fff = sss[1].strip()
+            if iiiiii in ['exit', 'echo', 'type', 'pwd', 'cd', 'history']:
+                if iiiiii == 'echo':
+                    with open(fff, 'a') as f:
+                        pass
+                    if len(sssssss) > 1:
+                        print(pqpq(sssssss[1]))
                 continue
             else:
-                with open(file_part, 'a') as f:
-                    subprocess.run(cmd_part, shell=True, stderr=f)
+                with open(fff, 'a') as f:
+                    pqzq.run(ddd, shell=True, stderr=f)
                 continue
 
-        if '2>' in command_foo:
-            parts = command_foo.split('2>', 1)
-            cmd_part = parts[0].strip()
-            file_part = parts[1].strip()
-            if identifier in ['exit', 'echo', 'type', 'pwd', 'cd', 'history']:
-                if identifier == 'echo':
-                    with open(file_part, 'w') as f:
-                        pass  # echo never writes to stderr
-                    if len(command_full) > 1:
-                        print(strip_redirection(command_full[1]))
+        if '2>' in sssss:
+            sss = sssss.split('2>', 1)
+            ddd = sss[0].strip()
+            fff = sss[1].strip()
+            if iiiiii in ['exit', 'echo', 'type', 'pwd', 'cd', 'history']:
+                if iiiiii == 'echo':
+                    with open(fff, 'w') as f:
+                        pass
+                    if len(sssssss) > 1:
+                        print(pqpq(sssssss[1]))
                 continue
             else:
-                with open(file_part, 'w') as f:
-                    subprocess.run(cmd_part, shell=True, stderr=f)
+                with open(fff, 'w') as f:
+                    pqzq.run(ddd, shell=True, stderr=f)
                 continue
 
-        # 1>> and >> (stdout append)
-        if '1>>' in command_foo or ('>>' in command_foo and '1>>' not in command_foo and '2>>' not in command_foo):
-            if '1>>' in command_foo:
-                parts = command_foo.split('1>>')
+        if '1>>' in sssss or ('>>' in sssss and '1>>' not in sssss and '2>>' not in sssss):
+            if '1>>' in sssss:
+                sss = sssss.split('1>>')
             else:
-                parts = command_foo.split('>>')
-            cmd_part = parts[0].strip()
-            file_part = parts[1].strip()
-            with open(file_part, 'a') as f:
-                subprocess.run(cmd_part, shell=True, stdout=f)
+                sss = sssss.split('>>')
+            ddd = sss[0].strip()
+            fff = sss[1].strip()
+            with open(fff, 'a') as f:
+                pqzq.run(ddd, shell=True, stdout=f)
             continue
 
-        # 1> and > (stdout overwrite)
-        if '1>' in command_foo or ('>' in command_foo and '1>' not in command_foo and '2>' not in command_foo):
-            if '1>' in command_foo:
-                parts = command_foo.split('1>')
+        if '1>' in sssss or ('>' in sssss and '1>' not in sssss and '2>' not in sssss):
+            if '1>' in sssss:
+                sss = sssss.split('1>')
             else:
-                parts = command_foo.split('>')
-            cmd_part = parts[0].strip()
-            file_part = parts[1].strip()
-            with open(file_part, 'w') as f:
-                subprocess.run(cmd_part, shell=True, stdout=f)
+                sss = sssss.split('>')
+            ddd = sss[0].strip()
+            fff = sss[1].strip()
+            with open(fff, 'w') as f:
+                pqzq.run(ddd, shell=True, stdout=f)
             continue
 
-        match identifier:
+        match iiiiii:
             case 'exit':
-                if history_file:
-                    with open(history_file, 'a') as h:
-                        for line in history_list[history_pointer:]:
+                if pppp:
+                    with open(pppp, 'a') as h:
+                        for line in llll[bbbb:]:
                             h.write(f'{line}\n')
-                exit(int(command_full[1]) if len(command_full) > 1 else 0)
+                qznq.exit(int(sssssss[1]) if len(sssssss) > 1 else 0)
 
             case 'echo':
-                if len(command_full) > 1:
-                    clean_echo = strip_redirection(command_full[1])
+                if len(sssssss) > 1:
+                    eeee = pqpq(sssssss[1])
                 else:
-                    clean_echo = ""
-                if output_file:
-                    if err_flag:
+                    eeee = ""
+                if zzzzq:
+                    if ccccc:
                         try:
-                            open(output_file, 'r')
+                            open(zzzzq, 'r')
                         except FileNotFoundError:
-                            write_to(output_file, '', append=append)
+                            azaz(zzzzq, '', xqaz=xxxxx)
                         finally:
-                            write_to(output_file, '', append=append)
-                            print(clean_echo)
+                            azaz(zzzzq, '', xqaz=xxxxx)
+                            print(eeee)
                     else:
-                        write_to(output_file, clean_echo + '\n', append=append)
+                        azaz(zzzzq, eeee + '\n', xqaz=xxxxx)
                 else:
-                    print(clean_echo)
+                    print(eeee)
 
             case 'type':
-                if command_full[1].strip() in command_list:
-                    print(f'{command_full[1]} is a shell builtin')
-                elif PATH := shutil.which(command_full[1] if len(command_full) > 1 else ''):
-                    print(f'{command_full[1]} is {PATH}')
+                if sssssss[1].strip() in qqqq:
+                    print(f'{sssssss[1]} is a shell builtin')
+                elif yyy := yqzn.which(sssssss[1] if len(sssssss) > 1 else ''):
+                    print(f'{sssssss[1]} is {yyy}')
                 else:
-                    print(f'{command_full[1]}: not found')
+                    print(f'{sssss}: not found')
 
             case 'pwd':
-                print(os.getcwd())
+                print(xzqz.getcwd())
 
             case 'cd':
                 try:
-                    os.chdir(Path.home() if command_full[1] == '~' else command_full[1])
+                    xzqz.chdir(nqpp.home() if sssssss[1] == '~' else sssssss[1])
                 except:
-                    print(f'cd: {command_full[1]}: No such file or directory')
+                    print(f'cd: {sssssss[1]}: No such file or directory')
 
             case 'history':
-                if len(command_full) == 2:
-                    if command_full[1].startswith('-a'):
-                        file = command_full[1][3:] if len(command_full[1]) > 2 else history_file
-                        if file:
-                            with open(file, 'a') as h:
-                                for line in history_list[history_pointer:]:
+                if len(sssssss) == 2:
+                    if sssssss[1].startswith('-a'):
+                        fff = sssssss[1][3:] if len(sssssss[1]) > 2 else pppp
+                        if fff:
+                            with open(fff, 'a') as h:
+                                for line in llll[bbbb:]:
                                     h.write(f'{line}\n')
-                            history_pointer = len(history_list)
+                            bbbb = len(llll)
                         continue
-                    elif command_full[1].startswith('-w'):
-                        file = command_full[1][3:]
-                        if file:
-                            with open(file, 'w') as h:
-                                for line in history_list:
+                    elif sssssss[1].startswith('-w'):
+                        fff = sssssss[1][3:]
+                        if fff:
+                            with open(fff, 'w') as h:
+                                for line in llll:
                                     h.write(f'{line}\n')
-                            with open(file, 'a') as h:
+                            with open(fff, 'a') as h:
                                 pass
                         continue
-                    elif command_full[1].startswith('-r'):
-                        file = command_full[1][3:]
-                        if file and os.path.exists(file):
-                            with open(file, 'r') as h:
-                                history_list.extend([line.rstrip() for line in h if line.rstrip()])
+                    elif sssssss[1].startswith('-r'):
+                        fff = sssssss[1][3:]
+                        if fff and xzqz.path.exists(fff):
+                            with open(fff, 'r') as h:
+                                llll.extend([line.rstrip() for line in h if line.rstrip()])
                         continue
 
-                curr_history_path = history_list
-                if len(command_full) == 2 and command_full[1].isdigit():
-                    limit = int(command_full[1])
-                    curr_history_path = history_list[-limit:]
-                    offset = len(history_list) - len(curr_history_path)
+                hhh = llll
+                if len(sssssss) == 2 and sssssss[1].isdigit():
+                    lll = int(sssssss[1])
+                    hhh = llll[-lll:]
+                    nnn = len(llll) - len(hhh)
                 else:
-                    offset = 0
-                for x, line in enumerate(curr_history_path):
-                    print(f' {x + 1 + offset} {line}')
+                    nnn = 0
+                for x, line in enumerate(hhh):
+                    print(f' {x + 1 + nnn} {line}')
 
-            case _:  # default
-                # Use the parser to get the real executable name (quotes stripped)
-                if shutil.which(identifier if identifier else ''):
+            case _:
+                if yqzn.which(iiiiii if iiiiii else ''):
                     try:
-                        subprocess.run(args_list)
+                        pqzq.run(qqqqqq)
                     except Exception as e:
                         print(e)
                 else:
-                    print(f'{command}: command not found')
+                    print(f'{ssss}: command not found')
 
 
 if __name__ == '__main__':
